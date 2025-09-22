@@ -27,7 +27,7 @@ export default function OrderConfirmPage() {
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [agree, setAgree] = useState(true);
+  const [agree, setAgree] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   // 복사 배지 UI 상태
@@ -36,6 +36,11 @@ export default function OrderConfirmPage() {
     setCopied(true);
     setTimeout(() => setCopied(false), 1200);
   };
+
+  // 🔽 쿠폰 상태
+  const [couponCode, setCouponCode] = useState("");
+  const [couponApplied, setCouponApplied] = useState(false);
+  const [couponError, setCouponError] = useState("");
 
   // 계좌정보 API
   useEffect(() => {
@@ -107,6 +112,25 @@ export default function OrderConfirmPage() {
     }
   };
 
+  // 🔽 실제 결제 금액 (쿠폰 적용 여부 반영)
+  const discountedAmount = useMemo(() => {
+    return couponApplied
+      ? Math.floor((Number(totalAmount) || 0) * 0.9)
+      : Number(totalAmount) || 0;
+  }, [couponApplied, totalAmount]);
+
+  // 🔽 쿠폰 확인 함수
+  const checkCoupon = () => {
+    if (couponCode.trim().toLowerCase() === "lota1234") {
+      setCouponApplied(true);
+      setCouponError("");
+      showSuccessToast("쿠폰이 적용되었습니다! (10% 할인)");
+    } else {
+      setCouponApplied(false);
+      setCouponError("잘못된 쿠폰입니다.");
+    }
+  };
+
   const submit = async () => {
     if (!name.trim()) return showErrorToast("성함을 입력해주세요.");
     if (!cleanPhone.trim()) return showErrorToast("전화번호를 입력해주세요.");
@@ -132,7 +156,7 @@ export default function OrderConfirmPage() {
         items,
         payment: {
           payerName: name.trim(),
-          amount: Number(totalAmount) || 0,
+          amount: Number(discountedAmount) || 0, // ✅ 쿠폰 적용 반영
         },
       };
 
@@ -173,8 +197,23 @@ export default function OrderConfirmPage() {
           <H2>결제</H2>
           <Row>
             <Label>총 금액</Label>
-            <Value>{(Number(totalAmount) || 0).toLocaleString()}</Value>
+            <Value>{discountedAmount.toLocaleString()}</Value>
           </Row>
+
+          {/* 🔽 쿠폰 입력 영역 */}
+          <CouponBox>
+            <CouponInput
+              placeholder="할인 코드를 입력하세요"
+              value={couponCode}
+              onChange={(e) => setCouponCode(e.target.value)}
+            />
+            <CouponBtn type="button" onClick={checkCoupon}>
+              쿠폰 확인
+            </CouponBtn>
+          </CouponBox>
+
+          {couponApplied && <CouponApplied>쿠폰 (10% 할인) 적용됨</CouponApplied>}
+          {couponError && <CouponError>{couponError}</CouponError>}
         </Section>
 
         <Divider />
@@ -200,7 +239,9 @@ export default function OrderConfirmPage() {
                   <Sub>계좌번호</Sub>
                   <AccountRow>
                     <AccountInline>
-                      <Strong aria-label="계좌번호">{account?.account || "-"}</Strong>
+                      <Strong aria-label="계좌번호">
+                        {account?.account || "-"}
+                      </Strong>
 
                       {/* 계좌번호 바로 옆 복사 버튼 */}
                       <CopyBtn
@@ -346,28 +387,22 @@ const Strong = styled.div`
   font-weight: 700;
   color: #523d33;
 `;
-
-/* 계좌번호 감싸는 행 - 전체 행은 block로 두고 내부는 inline-flex로 정렬 */
 const AccountRow = styled.div`
   display: block;
 `;
-
-/* 계좌번호 + 복사 버튼 + 배지 를 "한 줄"에 자연스럽게 */
 const AccountInline = styled.div`
   display: inline-flex;
   align-items: center;
-  gap: 6px;             /* 번호와 버튼 사이 살짝 띄움 */
-  flex-wrap: wrap;      /* 모바일에서 줄바꿈 허용 */
+  gap: 6px;
+  flex-wrap: wrap;
 `;
-
-/* 복사 버튼 - 텍스트 라인과 어울리는 미니 버튼 */
 const CopyBtn = styled.button`
   border: none;
   background: transparent;
   background-color: #f8f4de;
   cursor: pointer;
-  font-size: 16px;      /* 아이콘 크기 */
-  padding: 2px 6px;     /* 작고 가벼운 터치 영역 */
+  font-size: 16px;
+  padding: 2px 6px;
   border-radius: 6px;
   line-height: 1;
   transition: background 0.15s ease;
@@ -383,8 +418,6 @@ const CopyBtn = styled.button`
     cursor: not-allowed;
   }
 `;
-
-/* 복사됨 배지 */
 const CopiedBadge = styled.span`
   font-size: 12px;
   font-weight: 700;
@@ -395,8 +428,6 @@ const CopiedBadge = styled.span`
   border-radius: 999px;
   line-height: 1;
 `;
-
-/* ▼ 입력 영역 */
 const InputBox = styled.div`
   margin: 10px 0;
   background: #f4efeb;
@@ -446,7 +477,6 @@ const Check = styled.span`
   font-weight: 800;
   background: ${({ $on }) => ($on ? "#fff" : "transparent")};
 `;
-
 const Bottom = styled.div`
   position: fixed;
   left: 50%;
@@ -470,4 +500,42 @@ const SubmitBtn = styled.button`
     opacity: 0.6;
     cursor: not-allowed;
   }
+`;
+
+/* 🔽 쿠폰 스타일 */
+const CouponBox = styled.div`
+  margin-top: 10px;
+  display: flex;
+  gap: 8px;
+`;
+const CouponInput = styled.input`
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+`;
+const CouponBtn = styled.button`
+  padding: 10px 14px;
+  background: #ef6a3b;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  &:hover {
+    background: #e05527;
+  }
+`;
+const CouponApplied = styled.div`
+  margin-top: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #10b981;
+`;
+const CouponError = styled.div`
+  margin-top: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #d04545;
 `;
