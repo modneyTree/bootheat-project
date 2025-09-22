@@ -14,5 +14,4 @@ public interface MenuItemRepository extends JpaRepository<MenuItem, Long> {
     boolean existsByBooth_BoothIdAndName(Long boothId, String name);
     // 고객용: 판매중만 + 이름 정렬
     List<MenuItem> findByBooth_BoothIdAndAvailableTrueOrderByNameAsc(Long boothId);
-
 }

@@ -28,7 +28,7 @@ class PublicBoothController {
     // GET /api/booths/{boothId}/menus  → 판매중만
     @GetMapping("/{boothId}/menus")
     public List<MenuItemDto> menus(@PathVariable Long boothId) {
-        return menuRepo.findByBooth_BoothIdAndAvailableTrueOrderByNameAsc(boothId)
+        return menuRepo.findByBooth_BoothIdOrderByNameAsc(boothId)
                 .stream()
                 .map(m -> new MenuItemDto(
                         m.getMenuItemId(), m.getBooth().getBoothId(), m.getName(),

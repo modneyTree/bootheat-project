@@ -8,6 +8,7 @@ import com.example.bootheat.service.OrderService;
 import com.example.bootheat.service.QueryService;
 import com.example.bootheat.service.TableService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -32,10 +33,10 @@ class ManagerTableController {
 
     // POST /api/manager/booths/{boothId}/tables
     @PostMapping("/booths/{boothId}/tables")
-    public ResponseEntity<Void> create(@PathVariable Long boothId,
-                                       @RequestBody CreateTableRequest req) {
-        tableService.create(boothId, req);
-        return ResponseEntity.status(201).build(); // Created 201, 바디 없음
+    public ResponseEntity<TableDto> create(@PathVariable Long boothId,
+                                           @RequestBody CreateTableRequest req) {
+        var res = tableService.create(boothId, req);
+        return ResponseEntity.status(HttpStatus.CREATED).body(res); // 201 Created + JSON 반환
     }
 
 }
