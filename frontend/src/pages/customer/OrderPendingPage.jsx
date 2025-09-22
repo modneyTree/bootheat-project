@@ -1,30 +1,77 @@
 // src/pages/OrderPendingPage.jsx
-import React, { useEffect } from 'react';
-import styled from 'styled-components';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
-import { clear } from '../../store/cartSlice.js';
-import Header from '../../components/common/Header.jsx';
-import { paths } from '../../routes/paths.js';
-import { showSuccessToast } from '../../utils/toast.js';
+import React, { useEffect, useState } from "react";
+import styled from "styled-components";
+import { useParams, useNavigate } from "react-router-dom";
+import { useDispatch, useSelector, shallowEqual } from "react-redux";
+import { clear } from "../../store/cartSlice.js";
+import Header from "../../components/common/Header.jsx";
+import { paths } from "../../routes/paths.js";
+import { showSuccessToast } from "../../utils/toast.js";
+import { getOrderDetail } from "../../api/customerApi.js";
+import { selectOrderIdsByTable } from "../../store/orderIdsSlice.js";
 
 export default function OrderPendingPage() {
-  const { boothId, orderId, tableId } = useParams();
+  const { boothId, tableId } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
+
+  // Redux에서 가져오기
+  const reduxOrderIds = useSelector(
+    selectOrderIdsByTable(Number(tableId)),
+    shallowEqual
+  );
+
+  const [currentOrderId, setCurrentOrderId] = useState(null);
 
   useEffect(() => {
     // 페이지 진입 시 장바구니 비우기
     dispatch(clear());
 
-    // 데모: 2초 후 완료 페이지로 이동
-    const t = setTimeout(() => {
-      showSuccessToast("결제 확인이 완료되었습니다.");
-      navigate(paths.complete(boothId, tableId, orderId));
-    }, 4000);
+    let orderId = null;
 
-    return () => clearTimeout(t);
-  }, [boothId, orderId, navigate, dispatch]);
+    // 1️⃣ reduxOrderIds에 값이 있으면 그걸 우선 사용
+    if (reduxOrderIds && reduxOrderIds.length > 0) {
+      orderId = reduxOrderIds[reduxOrderIds.length - 1];
+      localStorage.setItem("lastOrderNumber", String(orderId));
+    } else {
+      // 2️⃣ redux에 값이 없으면 localStorage에서 가져오기
+      const stored = localStorage.getItem("lastOrderNumber");
+      if (stored) {
+        orderId = Number(stored);
+      }
+    }
+
+    if (orderId) {
+      setCurrentOrderId(orderId);
+    }
+  }, [reduxOrderIds, dispatch]);
+
+  useEffect(() => {
+    if (!currentOrderId) return;
+
+    let interval;
+
+    async function pollOrderStatus() {
+      try {
+        const data = await getOrderDetail(currentOrderId);
+        const status = data?.customerOrder?.status;
+
+        if (status === "APPROVED") {
+          showSuccessToast("결제 확인이 완료되었습니다.");
+          navigate(paths.complete(boothId, tableId, currentOrderId));
+        }
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.error("주문 상세 조회 실패", e);
+      }
+    }
+
+    // 3초마다 상태 체크
+    pollOrderStatus();
+    interval = setInterval(pollOrderStatus, 3000);
+
+    return () => clearInterval(interval);
+  }, [currentOrderId, boothId, tableId, navigate]);
 
   const goHome = () => navigate(paths.menu(boothId, tableId));
 
@@ -40,7 +87,9 @@ export default function OrderPendingPage() {
       <Content>
         <MainText>주문 확인 중입니다…</MainText>
         <SubText>잠시만 기다려주세요.</SubText>
-        <SubText>2분 동안 주문 확인이 없을 경우{'\n'}직원에게 문의해주세요 :)</SubText>
+        <SubText>
+          2분 동안 주문 확인이 없을 경우{"\n"}직원에게 문의해주세요 :)
+        </SubText>
       </Content>
 
       <BottomBar>

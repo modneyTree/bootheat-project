@@ -10,7 +10,6 @@ import { addItem } from '../../store/cartSlice.js';
 import { useDispatch } from 'react-redux';
 import { showSuccessToast, showErrorToast } from '../../utils/toast.js';
 import { listMenusByBooth } from '../../api/customerApi.js';
-import { MOCK_FOOD } from '../../test/mock.js';
 
 export default function MenuPage() {
   const { boothId, tableId } = useParams();

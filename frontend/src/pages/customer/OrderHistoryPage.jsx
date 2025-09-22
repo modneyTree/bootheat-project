@@ -60,21 +60,30 @@ export default function OrderHistoryPage() {
 
   // ✅ Redux에서 값이 바뀌면 localStorage + state에 반영
   useEffect(() => {
-    if (reduxOrderIds && reduxOrderIds.length > 0) {
-      const unique = Array.from(
-        new Set(reduxOrderIds.map((n) => Number(n)).filter(Number.isFinite))
-      );
-      setOrderIds(unique);
-      localStorage.setItem(
-        `orderIds_table_${tableId}`,
-        JSON.stringify(unique)
-      );
-    }
+    // 1. 로컬스토리지에서 기존 데이터 가져오기
+    const stored = localStorage.getItem(`orderIds_table_${tableId}`);
+    const storedIds = stored ? JSON.parse(stored) : [];
+
+    // 2. reduxOrderIds + 기존 데이터 합치기
+    const merged = [...storedIds, ...(reduxOrderIds || [])];
+
+    // 3. 숫자 변환 + 유효성 검사 + 중복 제거
+    const unique = Array.from(
+      new Set(merged.map((n) => Number(n)).filter(Number.isFinite))
+    );
+
+    // 4. 상태 업데이트
+    setOrderIds(unique);
+
+    // 5. 로컬 스토리지에 다시 저장
+    localStorage.setItem(`orderIds_table_${tableId}`, JSON.stringify(unique));
   }, [reduxOrderIds, tableId]);
 
   // 숫자 변환 + NaN 제거 + 중복 제거
   const uniqueOrderIds = useMemo(() => {
-    return Array.from(new Set(orderIds.map((n) => Number(n)).filter(Number.isFinite)));
+    return Array.from(
+      new Set(orderIds.map((n) => Number(n)).filter(Number.isFinite))
+    );
   }, [orderIds]);
 
   // ✅ 안정적인 문자열 키(정렬 후 join) — useEffect 의존성으로 사용
@@ -109,9 +118,7 @@ export default function OrderHistoryPage() {
           .filter((r) => r.status === "fulfilled" && r.value)
           .map((r) => r.value);
 
-        ok.sort(
-          (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-        );
+        ok.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
         if (!canceled) {
           setOrders(ok);
@@ -147,12 +154,18 @@ export default function OrderHistoryPage() {
 
       {loading ? (
         <List>
-          <Card><Skeleton>주문 내역을 불러오는 중…</Skeleton></Card>
-          <Card><Skeleton>주문 내역을 불러오는 중…</Skeleton></Card>
+          <Card>
+            <Skeleton>주문 내역을 불러오는 중…</Skeleton>
+          </Card>
+          <Card>
+            <Skeleton>주문 내역을 불러오는 중…</Skeleton>
+          </Card>
         </List>
       ) : error ? (
         <List>
-          <Card><ErrorText>{error}</ErrorText></Card>
+          <Card>
+            <ErrorText>{error}</ErrorText>
+          </Card>
         </List>
       ) : orders.length === 0 ? (
         <EmptyBox>
@@ -164,9 +177,7 @@ export default function OrderHistoryPage() {
           {orders.map((o) => {
             const stat =
               STATUS_MAP[o.customerOrder.status] || STATUS_MAP.PENDING;
-            const qty = Array.isArray(o.orderItems)
-              ? o.orderItems.length
-              : 0;
+            const qty = Array.isArray(o.orderItems) ? o.orderItems.length : 0;
             return (
               <Card key={o.orderId}>
                 <TopRow>
@@ -289,7 +300,7 @@ const Skeleton = styled.div`
 `;
 
 const ErrorText = styled.div`
-  color: #EF4444;
+  color: #ef4444;
   font-size: 14px;
 `;
 
