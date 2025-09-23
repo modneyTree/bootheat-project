@@ -238,7 +238,7 @@ export default function OrderConfirmPage() {
           <Section>
             <H2>계좌이체</H2>
             <Helper>
-              아래 계좌번호에 주문자님 성함으로 계좌이체 부탁드립니다.
+              제출 전에 꼭 계좌이체 부탁드립니다!
             </Helper>
 
             {accLoading ? (
@@ -369,7 +369,8 @@ const Divider = styled.hr`
 `;
 const Helper = styled.p`
   margin: 0 0 16px;
-  color: #7a5f54;
+  color: red;
+  font-weight: bold;
   line-height: 1.5;
 `;
 const Skeleton = styled.div`
@@ -405,6 +406,11 @@ const Strong = styled.div`
   font-weight: 700;
   color: #523d33;
 `;
+const Caution = styled.div`
+  font-size: 20px;
+  font-weight: 800;
+  color: red;
+`
 const AccountRow = styled.div`
   display: block;
 `;

@@ -9,7 +9,7 @@ import { paths } from '../../routes/paths.js';
 import { addItem } from '../../store/cartSlice.js';
 import { useDispatch } from 'react-redux';
 import { showSuccessToast, showErrorToast } from '../../utils/toast.js';
-import { listMenusByBooth } from '../../api/customerApi.js';
+import {getBoothAccount, listMenusByBooth} from '../../api/customerApi.js';
 
 export default function MenuPage() {
   const { boothId, tableId } = useParams();
@@ -19,6 +19,35 @@ export default function MenuPage() {
   const [menus, setMenus] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
+  const [account, setAccount] = useState(null);
+
+  /** fetch account*/
+    useEffect(() => {
+        let canceled = false;
+        async function fetchAccount() {
+            try {
+                // setAccLoading(true);
+                const data = await getBoothAccount(Number(boothId));
+                if (!canceled) {
+                    setAccount(data);
+                    // setAccError(null);
+                }
+            } catch (e) {
+                if (!canceled) {
+                    setAccount(null);
+                    // setAccError("계좌 정보를 불러오지 못했습니다.");
+                }
+                // eslint-disable-next-line no-console
+                console.error(e);
+            } finally {
+                /// if (!canceled) setAccLoadingfalse);
+            }
+        }
+        if (boothId) fetchAccount();
+        return () => {
+            canceled = true;
+        };
+    }, [boothId]);
 
   // --- API: 부스별 메뉴 조회 ---
   useEffect(() => {
@@ -58,7 +87,39 @@ export default function MenuPage() {
   const openDetail = useCallback((item) => setSelected(item), []);
   const closeDetail = useCallback(() => setSelected(null), []);
 
-  // 장바구니 담기
+    const handleCopyAccount = async () => {
+        try {
+            if (!account?.bank || !account?.account) return;
+
+            const text = `${account.bank} ${account.account}`;
+
+            // Clipboard API 우선
+            if (navigator?.clipboard?.writeText) {
+                await navigator.clipboard.writeText(text);
+            } else {
+                // Fallback
+                const ta = document.createElement("textarea");
+                ta.value = text;
+                ta.setAttribute("readonly", "");
+                ta.style.position = "fixed";
+                ta.style.top = "-9999px";
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand("copy");
+                document.body.removeChild(ta);
+            }
+
+            showSuccessToast("계좌번호가 복사되었습니다.");
+            // hideCopiedSoon();
+        } catch (e) {
+            // eslint-disable-next-line no-console
+            console.error(e);
+            showErrorToast("복사에 실패했습니다. 길게 눌러 복사해주세요.");
+        }
+    };
+
+
+    // 장바구니 담기
   const handleAdd = useCallback(
     (item, qty) => {
       // API 스키마 → cart 스키마 매핑
@@ -84,7 +145,20 @@ export default function MenuPage() {
         onLeft={() => navigate(paths.orderHistory(boothId, tableId))}
         onRight={() => navigate(paths.cart(boothId, tableId))}
       />
-
+        <Container>
+            <Strong aria-label="계좌번호">
+                {account?.bank} {account?.account}
+            </Strong>
+            <CopyBtn
+                type="button"
+                aria-label="은행명과 계좌번호 복사"
+                title="계좌번호 복사"
+                onClick={handleCopyAccount}
+                disabled={!account}
+            >
+                📋
+            </CopyBtn>
+        </Container>
       {loading ? (
         <Loading>메뉴 불러오는 중…</Loading>
       ) : (
@@ -209,3 +283,40 @@ const OrderButton = styled.button`
   cursor: pointer;
   box-shadow: 0 6px 16px rgba(239, 106, 59, 0.25);
 `;
+
+const Strong = styled.div`
+    font-weight: bold;
+    color: #000000;
+    font-size: 1.25rem;
+`
+
+const CopyBtn = styled.button`
+  border: none;
+  background: transparent;
+  background-color: #f8f4de;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  line-height: 1;
+  transition: background 0.15s ease;
+
+  &:hover {
+    background: #f2f2f2;
+  }
+  &:active {
+    transform: translateY(0.5px);
+  }
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
+const Container = styled.div`
+    display: flex;
+    flex-direction: row;
+    width: fit-content;
+    margin-left: auto;
+    margin-right: auto;
+`

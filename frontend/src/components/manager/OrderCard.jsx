@@ -5,7 +5,7 @@ import styled from "styled-components";
 export default function OrderCard({
   tableNo,
   timeText = "",
-  active = false,
+  active = false, //
   orderStatus = null, // 'PENDING' | 'APPROVED' | 'REJECTED' | 'FINISHED' | null
   items = [], // [{ name, qty }]
   customerName = "",
@@ -88,13 +88,13 @@ export default function OrderCard({
                 <Won>원</Won>
               </MetaVal>
             </MetaRow>
-            <MetaRow>
+            {/*<MetaRow>
               <MetaKey>총 주문 금액</MetaKey>
               <MetaVal>
                 {totalAmount.toLocaleString("ko-KR")}
                 <Won>원</Won>
               </MetaVal>
-            </MetaRow>
+            </MetaRow>*/}
           </Meta>
 
           <Actions>
