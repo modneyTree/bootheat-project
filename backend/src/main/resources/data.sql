@@ -113,11 +113,11 @@ VALUES
 -- 사이드 메뉴
 INSERT INTO menu_item (booth_id, name, category, price, available, description, model_url, preview_image, created_at)
 VALUES
-    (5, '치즈 계란말이', 'FOOD', 8000, TRUE, NULL,
+    (5, '황도', 'FOOD', 8000, TRUE, NULL,
      'https://modney.shop/uploads/c6df302a-c4e6-414d-9cfe-c166cfa36808_sscc_side2.png',
      'https://modney.shop/uploads/c6df302a-c4e6-414d-9cfe-c166cfa36808_sscc_side2.png',
      CURRENT_TIMESTAMP),
-    (5, '황도', 'FOOD', 5000, TRUE, NULL,
+    (5, '치즈 계란말이', 'FOOD', 5000, TRUE, NULL,
      'https://modney.shop/uploads/d43187d7-4e56-405f-ad16-4c54946762d4_sscc_side1.png',
      'https://modney.shop/uploads/d43187d7-4e56-405f-ad16-4c54946762d4_sscc_side1.png',
      CURRENT_TIMESTAMP);
