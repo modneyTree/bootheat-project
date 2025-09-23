@@ -2,6 +2,8 @@ package com.example.bootheat.repository;
 
 import com.example.bootheat.domain.CustomerOrder;
 import com.example.bootheat.dto.StatsTotals;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -16,6 +18,9 @@ public interface CustomerOrderRepository extends JpaRepository<CustomerOrder, Lo
 
     // 특정 방문(visit)의 주문들
     List<CustomerOrder> findByVisit_VisitIdOrderByCreatedAtDesc(Long visitId);
+
+    // ⬇️ limit 적용용
+    Page<CustomerOrder> findByVisit_VisitIdOrderByCreatedAtDesc(Long visitId, Pageable pageable);
 
     // 특정 부스-테이블 전체 주문
     List<CustomerOrder> findByBooth_BoothIdAndTable_TableIdOrderByCreatedAtDesc(Long boothId, Long tableId);

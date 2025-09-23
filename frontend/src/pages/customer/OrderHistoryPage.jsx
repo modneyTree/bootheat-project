@@ -111,7 +111,7 @@ export default function OrderHistoryPage() {
       try {
         const ids = idsKey.split(",").map((s) => Number(s));
         const results = await Promise.allSettled(
-          ids.map((id) => getOrderDetail(id))
+          ids.map((id) => getOrderDetail(id)) // 하드 코딩
         );
 
         const ok = results
