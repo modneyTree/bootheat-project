@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState, useCallback } from "react";
+// src/pages/manager/ManagerOrderPage.jsx
+import React, { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import styled from "styled-components";
 import { useParams } from "react-router-dom";
 import {
@@ -108,18 +109,20 @@ export default function ManagerOrderPage() {
   const [loading, setLoading] = useState(true);
   const [tables, setTables] = useState([]);
   const [ordersByTable, setOrdersByTable] = useState({});
-  const [refreshKey, setRefreshKey] = useState(0);
 
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyTable, setHistoryTable] = useState(null);
 
+  const loadingRef = useRef(false);
+
   const load = useCallback(async () => {
     if (!boothNum) return;
-    setLoading(true);
-    let alive = true;
+    if (loadingRef.current) return; // 중복 요청 방지
+    loadingRef.current = true;
+
     try {
+      setLoading(true);
       const tableList = await getTablesByBooth(boothNum);
-      if (!alive) return;
       const safeTables = Array.isArray(tableList) ? tableList : [];
       setTables(safeTables);
 
@@ -157,18 +160,25 @@ export default function ManagerOrderPage() {
       detailPairs.forEach(({ tableId, details }) => {
         map[tableId] = details;
       });
-      if (alive) setOrdersByTable(map);
+      setOrdersByTable(map);
     } finally {
-      if (alive) setLoading(false);
+      setLoading(false);
+      loadingRef.current = false;
     }
-    return () => {
-      alive = false;
-    };
   }, [boothNum]);
 
+  // ✅ 초기 로드 + 10초마다 자동 업데이트 (탭 비활성화 시 정지)
   useEffect(() => {
-    load();
-  }, [load, refreshKey]);
+    load(); // 첫 실행
+
+    const id = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        load();
+      }
+    }, 10000);
+
+    return () => clearInterval(id);
+  }, [load]);
 
   const handleApprove = async (tableId) => {
     const list = ordersByTable[tableId] || [];
@@ -177,7 +187,7 @@ export default function ManagerOrderPage() {
     if (!id) return;
     try {
       await approveOrder(id);
-      setRefreshKey((v) => v + 1);
+      load();
     } catch (e) {
       console.error(e);
       alert("주문 수락에 실패했습니다.");
@@ -191,7 +201,7 @@ export default function ManagerOrderPage() {
     if (!id) return;
     try {
       await rejectOrder(id);
-      setRefreshKey((v) => v + 1);
+      load();
     } catch (e) {
       console.error(e);
       alert("주문 거절에 실패했습니다.");
@@ -202,7 +212,7 @@ export default function ManagerOrderPage() {
     if (!orderId || !item?.id) return;
     try {
       await updateOrderItemFinished(orderId, item.id, !item.is_finished);
-      setRefreshKey((v) => v + 1);
+      load();
     } catch (e) {
       console.error(e);
       alert("항목 상태 변경에 실패했습니다.");
@@ -225,7 +235,7 @@ export default function ManagerOrderPage() {
       console.error("비우기 처리 중 오류", e);
       alert("일부 주문 비우기 처리에 실패했습니다. 새로고침 후 상태를 확인하세요.");
     }
-    setRefreshKey((v) => v + 1);
+    load();
   };
 
   const handleReceiptClick = (tableId) => {
@@ -237,15 +247,14 @@ export default function ManagerOrderPage() {
 
   const handleCreateTable = async () => {
     await createTable(boothNum);
-    setRefreshKey((v) => v + 1);
+    load();
   };
 
   const cards = useMemo(() => {
     return (tables || []).map((t) => {
       const details = ordersByTable[t.tableId] || [];
       const latest = details.reduce(
-          (acc, o) =>
-              ts(getCreatedAt(o)) > ts(getCreatedAt(acc)) ? o : acc,
+          (acc, o) => (ts(getCreatedAt(o)) > ts(getCreatedAt(acc)) ? o : acc),
           null
       );
 
@@ -270,9 +279,7 @@ export default function ManagerOrderPage() {
           </Left>
           <Right>
             <CreateBtn onClick={handleCreateTable}>테이블 새로 생성</CreateBtn>
-            <RefreshBtn onClick={() => setRefreshKey((v) => v + 1)}>
-              새로고침
-            </RefreshBtn>
+            <RefreshBtn onClick={load}>새로고침</RefreshBtn>
           </Right>
         </TopBar>
 

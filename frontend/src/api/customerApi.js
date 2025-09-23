@@ -135,6 +135,28 @@ export function openOrderStream(boothId, onMessage, onError) {
   };
 }
 
+/** ✅ 최신 visit 주문 목록 */
+export async function listOrdersByLatestVisit(boothId, tableId, limit = 10) {
+  assertPositiveInt("boothId", boothId);
+  assertPositiveInt("tableId", tableId);
+  const { data } = await client.get(
+      API_PUBLIC.LIST_ORDERS_BY_LATEST_VISIT(boothId, tableId, limit)
+  );
+  return Array.isArray(data) ? data : [];
+}
+
+/** ✅ 특정 visit 주문 목록 */
+export async function listOrdersByVisit(boothId, tableId, visitId, limit = 10) {
+  assertPositiveInt("boothId", boothId);
+  assertPositiveInt("tableId", tableId);
+  assertPositiveInt("visitId", visitId);
+  const { data } = await client.get(
+      API_PUBLIC.LIST_ORDERS_BY_VISIT(boothId, tableId, visitId, limit)
+  );
+  return Array.isArray(data) ? data : [];
+}
+
+
 // --------------------------------------------------
 // 묶어서 기본 export도 제공 (선호에 따라 사용)
 // --------------------------------------------------
@@ -148,6 +170,8 @@ const customerApi = {
   openOrderStream,
   EP: API_PUBLIC,
   BASE_URL,
+  listOrdersByLatestVisit,
+  listOrdersByVisit,
 };
 
 export default customerApi;

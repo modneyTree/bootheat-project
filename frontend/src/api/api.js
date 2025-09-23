@@ -60,6 +60,13 @@ export const API_PUBLIC = {
   // 응답: text/event-stream
   STREAM_ORDER_UPDATES_SSE: (boothId) =>
     `/orders/stream?${qs({ boothId })}`,
+
+  // ✅ 최신 visit 주문 목록 (응답: [{ orderId, orderCode, status, totalAmount, createdAt, items[], payment, visitId }, ...])
+  LIST_ORDERS_BY_LATEST_VISIT: (boothId, tableId, limit = 10) =>
+    `/booths/${boothId}/tables/${tableId}/visits/latest/orders?limit=${limit}`,
+  // ✅ 특정 visit 주문 목록
+  LIST_ORDERS_BY_VISIT: (boothId, tableId, visitId, limit = 10) =>
+    `/booths/${boothId}/tables/${tableId}/visits/${visitId}/orders?limit=${limit}`,
 };
 
 // ---------------------------------------------------------------------
