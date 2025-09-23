@@ -3,7 +3,8 @@ INSERT INTO booth (name, location, created_at)
 VALUES
     ('핫도그부스', 'A동 앞', CURRENT_TIMESTAMP),
     ('분식부스',   'B동 앞', CURRENT_TIMESTAMP),
-    ('주점부스',   'C동 앞', CURRENT_TIMESTAMP);
+    ('주점부스',   'C동 앞', CURRENT_TIMESTAMP),
+    ('롯타부스', '8 번 신양관 앞', CURRENT_TIMESTAMP);
 
 -- 2) BOOTH_TABLE
 -- 부스1 (3개)
@@ -44,6 +45,31 @@ VALUES
     (3, 19, TRUE, CURRENT_TIMESTAMP),
     (3, 20, TRUE, CURRENT_TIMESTAMP),
     (3, 21, TRUE, CURRENT_TIMESTAMP);
+
+-- 2) BOOTH_TABLE (부스4 → 21개)
+INSERT INTO booth_table (booth_id, table_number, active, created_at)
+VALUES
+    (4,  1, TRUE, CURRENT_TIMESTAMP),
+    (4,  2, TRUE, CURRENT_TIMESTAMP),
+    (4,  3, TRUE, CURRENT_TIMESTAMP),
+    (4,  4, TRUE, CURRENT_TIMESTAMP),
+    (4,  5, TRUE, CURRENT_TIMESTAMP),
+    (4,  6, TRUE, CURRENT_TIMESTAMP),
+    (4,  7, TRUE, CURRENT_TIMESTAMP),
+    (4,  8, TRUE, CURRENT_TIMESTAMP),
+    (4,  9, TRUE, CURRENT_TIMESTAMP),
+    (4, 10, TRUE, CURRENT_TIMESTAMP),
+    (4, 11, TRUE, CURRENT_TIMESTAMP),
+    (4, 12, TRUE, CURRENT_TIMESTAMP),
+    (4, 13, TRUE, CURRENT_TIMESTAMP),
+    (4, 14, TRUE, CURRENT_TIMESTAMP),
+    (4, 15, TRUE, CURRENT_TIMESTAMP),
+    (4, 16, TRUE, CURRENT_TIMESTAMP),
+    (4, 17, TRUE, CURRENT_TIMESTAMP),
+    (4, 18, TRUE, CURRENT_TIMESTAMP),
+    (4, 19, TRUE, CURRENT_TIMESTAMP),
+    (4, 20, TRUE, CURRENT_TIMESTAMP),
+    (4, 21, TRUE, CURRENT_TIMESTAMP);
 
 -- 3) MENU_ITEM
 -- 부스1
@@ -94,6 +120,39 @@ VALUES
      'https://img.dongwonmall.com/dwmall/static_root/model_img/main/151/15131_1_a.jpg?f=webp&q=80',
      CURRENT_TIMESTAMP);
 
+-- 3) MENU_ITEM (부스4)
+-- 메인 메뉴 3개
+INSERT INTO menu_item (booth_id, name, category, price, available, description, model_url, preview_image, created_at)
+VALUES
+    (4, '강백호~돌뼈', 'FOOD', 15000, TRUE, NULL,
+     'https://modney.shop/uploads/fa4c19f0-9059-4cc0-9570-32aeabb1ebe4_lota_memu1.jpg',
+     'https://modney.shop/uploads/fa4c19f0-9059-4cc0-9570-32aeabb1ebe4_lota_memu1.jpg',
+     CURRENT_TIMESTAMP),
+    (4, '안자이 센세의 오코노미야끼', 'FOOD', 13000, TRUE, NULL,
+     'https://modney.shop/uploads/7db95bd0-bbff-4f9d-a1b4-d59c42f80d70_lota_menu2.jpg',
+     'https://modney.shop/uploads/7db95bd0-bbff-4f9d-a1b4-d59c42f80d70_lota_menu2.jpg',
+     CURRENT_TIMESTAMP),
+    (4, '강백호 입문 치킨너켓& 만두', 'FOOD', 12000, TRUE, NULL,
+     'https://modney.shop/uploads/8bc2dc42-648d-4a7a-95f0-eb49f3c1eb57_lota_menu3.jpg',
+     'https://modney.shop/uploads/8bc2dc42-648d-4a7a-95f0-eb49f3c1eb57_lota_menu3.jpg',
+     CURRENT_TIMESTAMP);
+
+-- 사이드 메뉴 3개
+INSERT INTO menu_item (booth_id, name, category, price, available, description, model_url, preview_image, created_at)
+VALUES
+    (4, '서태웅의 3점슛 타코야키', 'FOOD', 8900, TRUE, NULL,
+     'https://modney.shop/uploads/777bd084-d3f4-4719-843c-b0f9b2292f34_lota_side1.jpg',
+     'https://modney.shop/uploads/777bd084-d3f4-4719-843c-b0f9b2292f34_lota_side1.jpg',
+     CURRENT_TIMESTAMP),
+    (4, '채치수 어묵꼬치', 'FOOD', 2000, TRUE, NULL,
+     'https://modney.shop/uploads/bb7806a5-7db8-4375-b54f-08c9fb58c7e0_lota_side2.jpg',
+     'https://modney.shop/uploads/bb7806a5-7db8-4375-b54f-08c9fb58c7e0_lota_side2.jpg',
+     CURRENT_TIMESTAMP),
+    (4, '하프타임 나쵸', 'FOOD', 5900, TRUE, NULL,
+     'https://modney.shop/uploads/407b6013-0b6d-4970-bfe8-d0564453f7c2_lota_side3.jpg',
+     'https://modney.shop/uploads/407b6013-0b6d-4970-bfe8-d0564453f7c2_lota_side3.jpg',
+     CURRENT_TIMESTAMP);
+
 -- 4) MANAGER_USER
 INSERT INTO manager_user (booth_id, username, password_hash, role, account_bank, account_no, account_holder, created_at)
 VALUES
@@ -102,4 +161,6 @@ VALUES
     (2, '분식운영자', '$2a$10$dummyhashdummyhashdummyhashdum', 'MANAGER',
      '신한은행', '123-456-789', '김철수', CURRENT_TIMESTAMP),
     (3, '주점운영자', '$2a$10$dummyhashdummyhashdummyhashdum', 'MANAGER',
-     '국민은행', '987-654-321', '이영희', CURRENT_TIMESTAMP);
+     '국민은행', '987-654-321', '이영희', CURRENT_TIMESTAMP),
+    (4, '롯타운영자', '$2a$10$dummyhashdummyhashdummyhashdum', 'MANAGER',
+     '우리은행', '444-555-666', '서태웅', CURRENT_TIMESTAMP);

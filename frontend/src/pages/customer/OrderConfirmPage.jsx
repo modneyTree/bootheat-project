@@ -115,8 +115,8 @@ export default function OrderConfirmPage() {
   // 🔽 실제 결제 금액 (쿠폰 적용 여부 반영)
   const discountedAmount = useMemo(() => {
     return couponApplied
-      ? Math.floor((Number(totalAmount) || 0) * 0.9)
-      : Number(totalAmount) || 0;
+        ? Math.floor((Number(totalAmount) || 0) * 0.9)
+        : Number(totalAmount) || 0;
   }, [couponApplied, totalAmount]);
 
   // 🔽 쿠폰 확인 함수
@@ -168,8 +168,22 @@ export default function OrderConfirmPage() {
 
       // ✅ 주문 생성 성공 → Redux에 orderId 저장 (테이블별 다중 저장)
       dispatch(
-        addOrderId({ tableId: Number(tableId), orderId: Number(orderId) })
+          addOrderId({ tableId: Number(tableId), orderId: Number(orderId) })
       );
+
+
+      // 1. 로컬스토리지에서 기존 데이터 가져오기
+      const stored = localStorage.getItem(`orderIds_table_${tableId}`);
+      const storedIds = stored ? JSON.parse(stored) : [];
+      // 2. 기존 데이터 합치기
+      const merged = [...storedIds, orderId];
+
+      // 3. 숫자 변환 + 유효성 검사 + 중복 제거
+      const unique = Array.from(
+          new Set(merged.map((n) => Number(n)).filter(Number.isFinite))
+      );
+      // 4. 로컬 스토리지에 다시 저장
+      localStorage.setItem(`orderIds_table_${tableId}`, JSON.stringify(unique));
 
       showSuccessToast(`${name}님의 주문요청이 관리자에게 전달되었습니다.`);
       navigate(paths.pending(boothId, tableId, orderId));
@@ -183,128 +197,132 @@ export default function OrderConfirmPage() {
   };
 
   return (
-    <Page>
-      <Header
-        title="주문상세"
-        leftIcon={<span style={{ fontSize: 20 }}>←</span>}
-        onLeft={() => navigate(-1)}
-        rightIcon={<span />}
-      />
+      <Page>
+        <Header
+            title="주문상세"
+            leftIcon={<span style={{ fontSize: 20 }}>←</span>}
+            onLeft={() => navigate(-1)}
+            rightIcon={<span />}
+        />
 
-      <Body>
-        {/* 결제 요약 */}
-        <Section>
-          <H2>결제</H2>
-          <Row>
-            <Label>총 금액</Label>
-            <Value>{discountedAmount.toLocaleString()}</Value>
-          </Row>
+        <Body>
+          {/* 결제 요약 */}
+          <Section>
+            <H2>결제</H2>
+            <Row>
+              <Label>총 금액</Label>
+              <Value>{discountedAmount.toLocaleString()}</Value>
+            </Row>
 
-          {/* 🔽 쿠폰 입력 영역 */}
-          <CouponBox>
-            <CouponInput
-              placeholder="할인 코드를 입력하세요"
-              value={couponCode}
-              onChange={(e) => setCouponCode(e.target.value)}
-            />
-            <CouponBtn type="button" onClick={checkCoupon}>
-              쿠폰 확인
-            </CouponBtn>
-          </CouponBox>
+            {/* 🔽 쿠폰 입력 영역 */}
+            <CouponBox>
+              <CouponInput
+                  placeholder="할인 코드를 입력하세요"
+                  value={couponCode}
+                  onChange={(e) => setCouponCode(e.target.value)}
+              />
+              <CouponBtn type="button" onClick={checkCoupon}>
+                쿠폰 확인
+              </CouponBtn>
+            </CouponBox>
 
-          {couponApplied && <CouponApplied>쿠폰 (10% 할인) 적용됨</CouponApplied>}
-          {couponError && <CouponError>{couponError}</CouponError>}
-        </Section>
+            {couponApplied && (
+                <CouponApplied>쿠폰 (10% 할인) 적용됨</CouponApplied>
+            )}
+            {couponError && <CouponError>{couponError}</CouponError>}
+          </Section>
 
-        <Divider />
+          <Divider />
 
-        {/* 계좌 이체 정보 */}
-        <Section>
-          <H2>계좌이체</H2>
-          <Helper>아래 계좌번호에 주문자님 성함으로 계좌이체 부탁드립니다.</Helper>
+          {/* 계좌 이체 정보 */}
+          <Section>
+            <H2>계좌이체</H2>
+            <Helper>
+              아래 계좌번호에 주문자님 성함으로 계좌이체 부탁드립니다.
+            </Helper>
 
-          {accLoading ? (
-            <Skeleton>계좌 정보를 불러오는 중…</Skeleton>
-          ) : accError ? (
-            <ErrorText>{accError}</ErrorText>
-          ) : (
-            <>
-              <AccountGrid>
-                <Col>
-                  <Sub>은행</Sub>
-                  <Strong>{account?.bank || "-"}</Strong>
-                </Col>
+            {accLoading ? (
+                <Skeleton>계좌 정보를 불러오는 중…</Skeleton>
+            ) : accError ? (
+                <ErrorText>{accError}</ErrorText>
+            ) : (
+                <>
+                  <AccountGrid>
+                    <Col>
+                      <Sub>은행</Sub>
+                      <Strong>{account?.bank || "-"}</Strong>
+                    </Col>
 
-                <Col>
-                  <Sub>계좌번호</Sub>
-                  <AccountRow>
-                    <AccountInline>
-                      <Strong aria-label="계좌번호">
-                        {account?.account || "-"}
-                      </Strong>
+                    <Col>
+                      <Sub>계좌번호</Sub>
+                      <AccountRow>
+                        <AccountInline>
+                          <Strong aria-label="계좌번호">
+                            {account?.account || "-"}
+                          </Strong>
 
-                      {/* 계좌번호 바로 옆 복사 버튼 */}
-                      <CopyBtn
-                        type="button"
-                        onClick={handleCopyAccount}
-                        disabled={!account?.bank || !account?.account}
-                        aria-label="은행명과 계좌번호 복사"
-                        title="계좌번호 복사"
-                      >
-                        📋
-                      </CopyBtn>
+                          {/* 계좌번호 바로 옆 복사 버튼 */}
+                          <CopyBtn
+                              type="button"
+                              onClick={handleCopyAccount}
+                              disabled={!account?.bank || !account?.account}
+                              aria-label="은행명과 계좌번호 복사"
+                              title="계좌번호 복사"
+                          >
+                            📋
+                          </CopyBtn>
 
-                      {copied && <CopiedBadge>복사됨</CopiedBadge>}
-                    </AccountInline>
-                  </AccountRow>
-                </Col>
+                          {copied && <CopiedBadge>복사됨</CopiedBadge>}
+                        </AccountInline>
+                      </AccountRow>
+                    </Col>
 
-                <Col>
-                  <Sub>예금주</Sub>
-                  <Strong>{account?.accountHolder || "-"}</Strong>
-                </Col>
-              </AccountGrid>
-            </>
-          )}
-        </Section>
+                    <Col>
+                      <Sub>예금주</Sub>
+                      <Strong>{account?.accountHolder || "-"}</Strong>
+                    </Col>
+                  </AccountGrid>
+                </>
+            )}
+          </Section>
 
-        <Divider />
+          <Divider />
 
-        {/* 입력 영역 */}
-        <Section>
-          <H3>주문자님 정보를 입력해주세요!</H3>
+          {/* 입력 영역 */}
+          <Section>
+            <H3>주문자님 정보를 입력해주세요!</H3>
 
-          <InputBox>
-            <Input
-              placeholder="성함을 입력해주세요."
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-          </InputBox>
+            <InputBox>
+              <Input
+                  placeholder="성함을 입력해주세요."
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+              />
+            </InputBox>
 
-          <InputBox>
-            <Input
-              placeholder="전화 번호를 입력해주세요"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              inputMode="tel"
-              pattern="[0-9]*"
-            />
-          </InputBox>
+            <InputBox>
+              <Input
+                  placeholder="전화 번호를 입력해주세요"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  inputMode="tel"
+                  pattern="[0-9]*"
+              />
+            </InputBox>
 
-          <Agree type="button" onClick={() => setAgree(!agree)}>
-            <Check $on={agree}>{agree ? "✓" : ""}</Check>
-            <span>개인정보 수집 이용 동의</span>
-          </Agree>
-        </Section>
-      </Body>
+            <Agree type="button" onClick={() => setAgree(!agree)}>
+              <Check $on={agree}>{agree ? "✓" : ""}</Check>
+              <span>개인정보 수집 이용 동의</span>
+            </Agree>
+          </Section>
+        </Body>
 
-      <Bottom>
-        <SubmitBtn onClick={submit} disabled={submitting || accLoading}>
-          {submitting ? "전송 중…" : "제출"}
-        </SubmitBtn>
-      </Bottom>
-    </Page>
+        <Bottom>
+          <SubmitBtn onClick={submit} disabled={submitting || accLoading}>
+            {submitting ? "전송 중…" : "제출"}
+          </SubmitBtn>
+        </Bottom>
+      </Page>
   );
 }
 
