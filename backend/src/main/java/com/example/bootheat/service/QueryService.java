@@ -136,7 +136,11 @@ public class QueryService {
 
         var items = orderItemRepo.findByOrder_OrderId(orderId).stream()
                 .map(i -> new OrderDetailManagerResponse.OrderItemRow(
-                        i.getMenuItem().getName(), i.getQuantity()))
+                        i.getOrderItemId(),                  // ⬅️ 추가
+                        i.getMenuItem().getName(),
+                        i.getQuantity(),
+                        i.getIsFinished()
+                ))
                 .toList();
 
         var p = paymentRepo.findByOrder_OrderId(orderId).orElse(null);
@@ -170,7 +174,11 @@ public class QueryService {
                 .map(o -> {
                     var items = orderItemRepo.findByOrder_OrderId(o.getOrderId()).stream()
                             .map(i -> new OrderDetailManagerResponse.OrderItemRow(
-                                    i.getMenuItem().getName(), i.getQuantity()))
+                                    i.getOrderItemId(),
+                                    i.getMenuItem().getName(),
+                                    i.getQuantity(),
+                                    i.getIsFinished()
+                            ))
                             .toList();
                     var p = paymentRepo.findByOrder_OrderId(o.getOrderId()).orElse(null);
                     var zone = ZoneId.systemDefault();

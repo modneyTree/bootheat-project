@@ -1,4 +1,3 @@
-// src/pages/ManagerOrderPage.jsx
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import styled from "styled-components";
 import { useParams } from "react-router-dom";
@@ -11,6 +10,8 @@ import {
   closeVisit,
   createTable,
   setOrderStatus,
+  updateOrderItemFinished,
+  updateAllOrderItemsFinished,
 } from "../../api/manager/orderApi.js";
 import AppLayout from "../../components/common/manager/AppLayout.jsx";
 import OrderCard from "../../components/manager/OrderCard.jsx";
@@ -24,15 +25,12 @@ function formatTime(ts) {
   const mm = String(d.getMinutes()).padStart(2, "0");
   return `${hh}:${mm}`;
 }
-
-/** ── 응답 스키마 전용 getter ───────────────────────────── */
 function getCO(o) {
   return o?.customerOrder || {};
 }
 function getPI(o) {
   return o?.paymentInfo || {};
 }
-
 function getCreatedAt(o) {
   return getCO(o).created_at ?? null;
 }
@@ -40,208 +38,193 @@ function getStatus(o) {
   return (getCO(o).status ?? "PENDING").toUpperCase();
 }
 function getAmount(o) {
-  // 원칙: paymentInfo.amount 사용. (없으면 보조로 total_amount)
   return getPI(o).amount ?? getCO(o).total_amount ?? 0;
 }
 function getPayerName(o) {
   return getPI(o).payer_name ?? "";
 }
-function getItems(o) {
+function getItemsRaw(o) {
   return Array.isArray(o?.orderItems) ? o.orderItems : [];
 }
 function getOrderId(o) {
   return getCO(o).order_id ?? o?.orderId ?? o?.id ?? null;
 }
+const ts = (v) => (v ? new Date(v).getTime() : -Infinity);
 
-/** 같은 visit의 여러 주문을 카드 하나로 합치기 (응답 스키마 기준) */
-function combineOrdersForCard(table, orders = []) {
-  if (!table?.active || !orders.length) {
+/** 최신 주문 1건을 OrderCard props로 변환 */
+function toLatestCardProps(table, latestOrder) {
+  if (!table?.active || !latestOrder) {
     return {
       tableNo: table?.tableNumber ?? "-",
       timeText: "",
       active: false,
+      orderStatus: null,
       items: [],
       customerName: "",
       addAmount: 0,
       totalAmount: 0,
-      orderStatus: null,
+      orderId: null,
     };
   }
 
-  // created_at 기준 정렬
-  const byAsc = [...orders].sort(
-    (a, b) => +new Date(getCreatedAt(a) || 0) - +new Date(getCreatedAt(b) || 0)
-  );
-  const byDesc = [...orders].sort(
-    (a, b) => +new Date(getCreatedAt(b) || 0) - +new Date(getCreatedAt(a) || 0)
-  );
+  const status = getStatus(latestOrder);
+  const timeText = formatTime(getCreatedAt(latestOrder));
+  const amount = getAmount(latestOrder);
+  const orderId = getOrderId(latestOrder);
+  const payer = getPayerName(latestOrder) || "-";
 
-  const first = byAsc[0];
-  const latest = byDesc[0];
-
-  // ✅ 총 금액 = 모든 주문의 paymentInfo.amount 합
-  const totalAmount = orders.reduce((sum, o) => sum + (getAmount(o) || 0), 0);
-
-  // ✅ 추가 주문 금액 = "가장 최근 주문" 1건의 paymentInfo.amount
-  const addAmount = getAmount(latest) || 0;
-
-  // 아이템 병합 (이름 기준, orderItems만 사용)
-  const itemMap = new Map();
-  orders.forEach((o) => {
-    getItems(o).forEach((it) => {
-      const key = it.name ?? `${it.name}`;
-      const prev = itemMap.get(key) || { name: it.name, qty: 0 };
-      prev.qty += it.quantity ?? 0;
-      itemMap.set(key, prev);
-    });
-  });
-  const mergedItems = Array.from(itemMap.values());
-
-  const customerName = getPayerName(latest) || getPayerName(first) || "-";
+  // ✅ order_item_id → id로 매핑, is_finished 그대로 사용
+  const items = getItemsRaw(latestOrder).map((it) => ({
+    id: it.order_item_id ?? it.id,
+    name: it.name,
+    qty: it.qty ?? it.quantity ?? 0,
+    is_finished: typeof it.is_finished === "boolean" ? it.is_finished : false,
+  }));
 
   return {
     tableNo: table.tableNumber,
-    timeText: formatTime(getCreatedAt(first)),
+    timeText,
     active: true,
-    orderStatus: getStatus(latest), // PENDING | APPROVED | REJECTED | FINISHED
-    items: mergedItems,
-    customerName,
-    addAmount, // 최신 주문 금액
-    totalAmount, // 모든 주문 합계
+    orderStatus: status,
+    items,
+    customerName: payer,
+    addAmount: amount,
+    totalAmount: amount,
+    orderId,
   };
 }
 
-/* 가장 최근 PENDING 주문 찾아서 반환 (응답 스키마 기준) */
 function pickLatestPending(orders = []) {
   return [...orders]
-    .filter((o) => getStatus(o) === "PENDING")
-    .sort(
-      (a, b) =>
-        +new Date(getCreatedAt(b) || 0) - +new Date(getCreatedAt(a) || 0)
-    )[0];
+      .filter((o) => getStatus(o) === "PENDING")
+      .sort((a, b) => ts(getCreatedAt(b)) - ts(getCreatedAt(a)))[0];
 }
 
 /* ========== component ========== */
 export default function ManagerOrderPage() {
   const { boothId } = useParams();
+  const boothNum = Number(boothId);
+
   const [loading, setLoading] = useState(true);
-  const [tables, setTables] = useState([]); // [{tableId, tableNumber, active}, ...]
-  // 테이블별 주문 상세 "배열" 저장: { [tableId]: OrderDetail[] }
+  const [tables, setTables] = useState([]);
   const [ordersByTable, setOrdersByTable] = useState({});
   const [refreshKey, setRefreshKey] = useState(0);
 
-  // 상세/영수증 모달
   const [historyOpen, setHistoryOpen] = useState(false);
-  const [historyTable, setHistoryTable] = useState(null); // { tableId, tableNumber }
+  const [historyTable, setHistoryTable] = useState(null);
 
-  /** 전체 로딩: 테이블 → 각 테이블의 orderIds[] → 모든 주문 상세 */
   const load = useCallback(async () => {
-    if (!boothId) return;
+    if (!boothNum) return;
     setLoading(true);
+    let alive = true;
     try {
-      // 1) 테이블 목록
-      const tableList = await getTablesByBooth(boothId);
+      const tableList = await getTablesByBooth(boothNum);
+      if (!alive) return;
       const safeTables = Array.isArray(tableList) ? tableList : [];
       setTables(safeTables);
 
-      // 2) 테이블별 latest visit의 모든 orderIds
       const idsByTable = await Promise.all(
-        safeTables.map(async (t) => {
-          try {
-            const ids = await getLatestVisitOrderIds(t.tableId); // e.g., [124, 125]
-            return { tableId: t.tableId, ids: Array.isArray(ids) ? ids : [] };
-          } catch {
-            return { tableId: t.tableId, ids: [] };
-          }
-        })
+          safeTables.map(async (t) => {
+            try {
+              const ids = await getLatestVisitOrderIds(t.tableId);
+              return {
+                tableId: t.tableId,
+                ids: Array.isArray(ids) ? ids : ids?.orderIds ?? [],
+              };
+            } catch {
+              return { tableId: t.tableId, ids: [] };
+            }
+          })
       );
 
-      // 3) 각 테이블의 orderIds 전부 상세 조회
       const detailPairs = await Promise.all(
-        idsByTable.map(async ({ tableId, ids }) => {
-          if (!ids.length) return { tableId, details: [] };
-          const details = await Promise.all(
-            ids.map(async (oid) => {
-              try {
-                // 응답 포맷: { customerOrder, orderItems[], paymentInfo }
-                return await getOrderDetail(oid);
-              } catch {
-                return null;
-              }
-            })
-          );
-          return { tableId, details: details.filter(Boolean) };
-        })
+          idsByTable.map(async ({ tableId, ids }) => {
+            if (!ids.length) return { tableId, details: [] };
+            const details = await Promise.all(
+                ids.map(async (oid) => {
+                  try {
+                    return await getOrderDetail(oid);
+                  } catch {
+                    return null;
+                  }
+                })
+            );
+            return { tableId, details: details.filter(Boolean) };
+          })
       );
 
-      // 상태 저장
       const map = {};
       detailPairs.forEach(({ tableId, details }) => {
         map[tableId] = details;
       });
-      setOrdersByTable(map);
+      if (alive) setOrdersByTable(map);
     } finally {
-      setLoading(false);
+      if (alive) setLoading(false);
     }
-  }, [boothId]);
+    return () => {
+      alive = false;
+    };
+  }, [boothNum]);
 
   useEffect(() => {
     load();
   }, [load, refreshKey]);
 
-  /* ===== 액션 핸들러 ===== */
-
-  // 가장 최근 PENDING 주문 승인
   const handleApprove = async (tableId) => {
     const list = ordersByTable[tableId] || [];
     const target = pickLatestPending(list);
     const id = getOrderId(target);
     if (!id) return;
-    await approveOrder(id);
-    setRefreshKey((v) => v + 1);
+    try {
+      await approveOrder(id);
+      setRefreshKey((v) => v + 1);
+    } catch (e) {
+      console.error(e);
+      alert("주문 수락에 실패했습니다.");
+    }
   };
 
-  // 가장 최근 PENDING 주문 거절
   const handleReject = async (tableId) => {
     const list = ordersByTable[tableId] || [];
     const target = pickLatestPending(list);
     const id = getOrderId(target);
     if (!id) return;
-    await rejectOrder(id);
-    setRefreshKey((v) => v + 1);
+    try {
+      await rejectOrder(id);
+      setRefreshKey((v) => v + 1);
+    } catch (e) {
+      console.error(e);
+      alert("주문 거절에 실패했습니다.");
+    }
   };
 
-  // 테이블 비우기(visit 종료)
+  const handleToggleItem = async (orderId, item) => {
+    if (!orderId || !item?.id) return;
+    try {
+      await updateOrderItemFinished(orderId, item.id, !item.is_finished);
+      setRefreshKey((v) => v + 1);
+    } catch (e) {
+      console.error(e);
+      alert("항목 상태 변경에 실패했습니다.");
+    }
+  };
+
   const handleClear = async (tableId, orderIds = []) => {
     const ok = window.confirm("정말로 비우시겠습니까?");
     if (!ok) return;
 
-
-    // 모든 주문 FINISHED 처리
-    for (const oid of orderIds) {
-      try {
-        console.log(`${oid} FINISHED 처리`);
-        await setOrderStatus(oid, "FINISHED");
-      } catch (e) {
-        console.error(`주문 ${oid} FINISHED 처리 중 오류`, e);
-      }
+    try {
+      await Promise.allSettled(
+          orderIds.map((oid) => updateAllOrderItemsFinished(oid, true))
+      );
+      await Promise.allSettled(
+          orderIds.map((oid) => setOrderStatus(oid, "FINISHED"))
+      );
+      await closeVisit(tableId);
+    } catch (e) {
+      console.error("비우기 처리 중 오류", e);
+      alert("일부 주문 비우기 처리에 실패했습니다. 새로고침 후 상태를 확인하세요.");
     }
-
-    // visit 종료
-    await closeVisit(tableId);
-    setRefreshKey((v) => v + 1);
-  };
-
-  // (옵션) 최신 주문 FINISHED 처리 — 필요 시 사용
-  const handleFinish = async (tableId) => {
-    const list = ordersByTable[tableId] || [];
-    const latest = [...list].sort(
-      (a, b) =>
-        +new Date(getCreatedAt(b) || 0) - +new Date(getCreatedAt(a) || 0)
-    )[0];
-    const id = getOrderId(latest);
-    if (!id) return;
-    await setOrderStatus(id, "FINISHED");
     setRefreshKey((v) => v + 1);
   };
 
@@ -253,72 +236,75 @@ export default function ManagerOrderPage() {
   };
 
   const handleCreateTable = async () => {
-    await createTable(boothId);
+    await createTable(boothNum);
     setRefreshKey((v) => v + 1);
   };
 
-  // 카드 데이터 합성 (+ 각 테이블의 주문 상세 & order_id 목록도 함께 보관)
   const cards = useMemo(() => {
     return (tables || []).map((t) => {
-      const details = ordersByTable[t.tableId] || []; // 이 테이블의 모든 주문 상세
-      const combined = combineOrdersForCard(t, details);
+      const details = ordersByTable[t.tableId] || [];
+      const latest = details.reduce(
+          (acc, o) =>
+              ts(getCreatedAt(o)) > ts(getCreatedAt(acc)) ? o : acc,
+          null
+      );
+
+      const cardProps = toLatestCardProps(t, latest);
       const orderIds = details.map((o) => getOrderId(o)).filter(Boolean);
 
-      // 필요시 orderIds/ orders 를 OrderCard에 넘길 수도 있음 (지금은 cards 메타로만 보관)
       return {
         table: t,
-        cardProps: combined,
-        orderIds, // 👈 이 테이블의 주문 ID 배열
-        orders: details, // 👈 이 테이블의 주문 상세 배열 (응답 원형 유지)
+        cardProps,
+        orderIds,
+        orders: details,
       };
     });
   }, [tables, ordersByTable]);
 
   return (
-    <AppLayout title="주문 관리">
-      <TopBar>
-        <Left>
-          <H1>부스 #{boothId} 주문 현황</H1>
-          {!loading && <CountText>총 {tables.length}개 테이블</CountText>}
-        </Left>
-        <Right>
-          <CreateBtn onClick={handleCreateTable}>테이블 새로 생성</CreateBtn>
-          <RefreshBtn onClick={() => setRefreshKey((v) => v + 1)}>
-            새로고침
-          </RefreshBtn>
-        </Right>
-      </TopBar>
+      <AppLayout title="주문 관리">
+        <TopBar>
+          <Left>
+            <H1>부스 #{boothId} 주문 현황</H1>
+            {!loading && <CountText>총 {tables.length}개 테이블</CountText>}
+          </Left>
+          <Right>
+            <CreateBtn onClick={handleCreateTable}>테이블 새로 생성</CreateBtn>
+            <RefreshBtn onClick={() => setRefreshKey((v) => v + 1)}>
+              새로고침
+            </RefreshBtn>
+          </Right>
+        </TopBar>
 
-      {loading ? (
-        <LoaderWrap>불러오는 중...</LoaderWrap>
-      ) : (
-        <Grid>
-          {cards.map(({ table, cardProps, orderIds }) => (
-            <>
-              <>{console.log(cards)}</>
-              <OrderCard
-                key={table.tableId}
-                {...cardProps}
-                onApprove={() => handleApprove(table.tableId)}
-                onReject={() => handleReject(table.tableId)}
-                onClear={() => handleClear(table.tableId, orderIds)}
-                onReceiptClick={() => handleReceiptClick(table.tableId)}
-                isHistory={false}
-              />
-            </>
-          ))}
-        </Grid>
-      )}
+        {loading ? (
+            <LoaderWrap>불러오는 중...</LoaderWrap>
+        ) : (
+            <Grid>
+              {cards.map(({ table, cardProps, orderIds }) => (
+                  <OrderCard
+                      key={table.tableId}
+                      {...cardProps}
+                      onApprove={() => handleApprove(table.tableId)}
+                      onReject={() => handleReject(table.tableId)}
+                      onClear={() => handleClear(table.tableId, orderIds)}
+                      onReceiptClick={() => handleReceiptClick(table.tableId)}
+                      isHistory={false}
+                      onToggleItem={(item) =>
+                          handleToggleItem(cardProps.orderId, item)
+                      }
+                  />
+              ))}
+            </Grid>
+        )}
 
-      {/* 상세/영수증 팝업 (이미 테이블 전체 이력 보여줌) */}
-      <OrderHistoryModal
-        open={historyOpen}
-        boothId={boothId}
-        tableId={historyTable?.tableId}
-        tableNumber={historyTable?.tableNumber}
-        onClose={() => setHistoryOpen(false)}
-      />
-    </AppLayout>
+        <OrderHistoryModal
+            open={historyOpen}
+            boothId={boothNum}
+            tableId={historyTable?.tableId}
+            tableNumber={historyTable?.tableNumber}
+            onClose={() => setHistoryOpen(false)}
+        />
+      </AppLayout>
   );
 }
 

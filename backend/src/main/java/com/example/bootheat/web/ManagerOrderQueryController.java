@@ -15,11 +15,11 @@ public class ManagerOrderQueryController {
 
     private final QueryService queryService;
 
-    // 상세 1건 (매니저용)
-//    @GetMapping("/orders/{orderId}")
-//    public OrderDetailManagerResponse getOne(@PathVariable Long orderId) {
-//        return queryService.getOrderDetailForManager(orderId);
-//    }
+    // ✅ (권장) 단건 상세 열기 - OrderItemRow에 isFinished 포함되어야 함
+    @GetMapping("/orders/{orderId}")
+    public OrderDetailManagerResponse getOne(@PathVariable Long orderId) {
+        return queryService.getOrderDetailForManager(orderId);
+    }
 
     // 테이블의 모든 주문 (상세 배열)
     @GetMapping("/booths/{boothId}/tables/{tableId}/orders")

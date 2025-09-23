@@ -100,7 +100,8 @@ public class OrderService {
                         i.getMenuItem().getMenuItemId(),
                         i.getMenuItem().getName(),
                         i.getUnitPrice(),
-                        i.getQuantity()))
+                        i.getQuantity(),
+                        i.getIsFinished()))
                 .toList();
 
         var p = paymentRepo.findByOrder_OrderId(orderId).orElse(null);
@@ -165,6 +166,9 @@ public class OrderService {
             throw new IllegalStateException("INVALID_STATE"); // APPROVED -> FINISHED만 허용
         }
         o.setStatus(Status.FINISHED);
+
+        // ✅ 주문 완료 시 아이템도 완료 처리
+        orderItemRepo.updateFinishedAllInOrder(orderId, true);
     }
 
     // (선택) 테이블 비우기(visit 종료)
@@ -210,6 +214,18 @@ public class OrderService {
                         o.getApprovedAt()==null?null:o.getApprovedAt().atZone(ZoneId.systemDefault()).toInstant(),
                         o.getVisit().getVisitId()
                 )).toList();
+    }
+    @Transactional
+    public void setOrderItemFinished(Long orderId, Long orderItemId, boolean finished) {
+        int updated = orderItemRepo.updateFinishedOne(orderId, orderItemId, finished);
+        if (updated == 0) {
+            throw new IllegalArgumentException("ORDER_ITEM_NOT_FOUND");
+        }
+    }
+
+    @Transactional
+    public int setAllOrderItemsFinished(Long orderId, boolean finished) {
+        return orderItemRepo.updateFinishedAllInOrder(orderId, finished);
     }
 
 

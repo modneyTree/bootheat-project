@@ -18,4 +18,9 @@ public class OrderItem {
 
     @Column(nullable=false) private Integer quantity;
     @Column(nullable=false) private Integer unitPrice;
+
+    // ✅ 추가: 항목 완료 여부
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean isFinished = false;
 }

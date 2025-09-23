@@ -3,15 +3,19 @@ import styled from "styled-components";
 import Modal from "../common/manager/Modal.jsx";
 import OrderCard from "./OrderCard.jsx";
 
-import { getTableOrders, setOrderStatus } from "../../api/manager/orderApi.js";
+import {
+  getTableOrders,
+  setOrderStatus,
+  updateOrderItemFinished,
+} from "../../api/manager/orderApi.js";
 
 export default function OrderHistoryModal({
-  open,
-  boothId,
-  tableId,
-  tableNumber,
-  onClose,
-}) {
+                                            open,
+                                            boothId,
+                                            tableId,
+                                            tableNumber,
+                                            onClose,
+                                          }) {
   const [loading, setLoading] = useState(false);
   const [orders, setOrders] = useState([]);
   const [error, setError] = useState(null);
@@ -39,32 +43,34 @@ export default function OrderHistoryModal({
     })();
   }, [open, boothId, tableId]);
 
-  // 최신순(생성시간) 정렬
+  // 최신순 정렬
   const sorted = useMemo(
-    () =>
-      [...orders].sort(
-        (a, b) => +new Date(b?.createdAt || 0) - +new Date(a?.createdAt || 0)
-      ),
-    [orders]
+      () =>
+          [...orders].sort(
+              (a, b) =>
+                  new Date(b?.customerOrder?.created_at).getTime() -
+                  new Date(a?.customerOrder?.created_at).getTime()
+          ),
+      [orders]
   );
 
   const fmtHM = (iso) => {
     if (!iso) return "";
     const d = new Date(iso);
     return `${String(d.getHours()).padStart(2, "0")}:${String(
-      d.getMinutes()
+        d.getMinutes()
     ).padStart(2, "0")}`;
   };
   const fmtYMD = (iso) => {
     if (!iso) return "";
     const d = new Date(iso);
     return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(
-      2,
-      "0"
+        2,
+        "0"
     )}.${String(d.getDate()).padStart(2, "0")}`;
   };
 
-  // 공통 상태 변경 함수
+  // 공통 상태 변경
   const handleSetStatus = async (orderId, next) => {
     try {
       await setOrderStatus(orderId, next);
@@ -74,55 +80,69 @@ export default function OrderHistoryModal({
     }
   };
 
-  // ★ API 응답 형태에 맞춰 매핑 (플랫 + items + payment)
-  const toCardProps = (o) => {
-    const status = (o?.customerOrder.status || "").toUpperCase(); // PENDING | APPROVED | REJECTED | FINISHED
-    const amount = o?.payment?.amount ?? o?.totalAmount ?? 0;
-    const id = o?.customerOrder.order_id ?? o?.id;
+  // ✅ 개별 아이템 토글
+  const handleToggleItem = async (orderId, item) => {
+    if (!orderId || !item?.id) return;
+    try {
+      await updateOrderItemFinished(orderId, item.id, !item.is_finished);
+      await reload();
+    } catch (e) {
+      alert("항목 상태 변경 실패");
+    }
+  };
 
-    const result = {
+  // API 응답 → OrderCard props 매핑
+  const toCardProps = (o) => {
+    const co = o?.customerOrder || {};
+    const status = (co.status || "").toUpperCase();
+    const amount = o?.paymentInfo?.amount ?? co.total_amount ?? 0;
+    const id = co.order_id;
+
+    return {
       tableNo: tableNumber,
-      timeText: `${fmtYMD(o?.createdAt)} ${fmtHM(o?.createdAt)}`,
-      orderId : id,
+      timeText: `${fmtYMD(co.created_at)} ${fmtHM(co.created_at)}`,
+      orderId: id,
       active: true,
       orderStatus: status,
       items: (o?.orderItems || []).map((it) => ({
+        id: it.order_item_id ?? it.id,
         name: it.name,
         qty: it.quantity ?? 0,
+        is_finished:
+            typeof it.is_finished === "boolean" ? it.is_finished : false,
       })),
       customerName: o?.paymentInfo?.payer_name || "-",
       addAmount: "-",
-      totalAmount: o?.paymentInfo.amount,
+      totalAmount: amount,
       onApprove: () => handleSetStatus(id, "APPROVED"),
       onReject: () => handleSetStatus(id, "REJECTED"),
       onClear: () => handleSetStatus(id, "FINISHED"),
       onReceiptClick: () => {},
+      // ✅ 전달
+      onToggleItem: (item) => handleToggleItem(id, item),
     };
-    return result;
   };
 
-
   return (
-    <Modal open={open} title={`테이블 ${tableNumber}`} onClose={onClose}>
-      {loading && <Empty>불러오는 중…</Empty>}
-      {error && <Empty>{error}</Empty>}
-      {!loading && !error && sorted.length === 0 && (
-        <Empty>이 테이블의 주문 이력이 없습니다.</Empty>
-      )}
-      {console.log(sorted)}
-      {!loading && !error && sorted.length > 0 && (
-        <List ref={listRef}>
-          {sorted.map((o, i) => (
-            <CardWrap
-              key={o?.orderId ?? o?.id ?? `${i}`}
-              ref={(el) => (colRefs.current[i] = el)}
-            >
-              <OrderCard {...toCardProps(o)} />
-            </CardWrap>
-          ))}
-        </List>
-      )}
-    </Modal>
+      <Modal open={open} title={`테이블 ${tableNumber}`} onClose={onClose}>
+        {loading && <Empty>불러오는 중…</Empty>}
+        {error && <Empty>{error}</Empty>}
+        {!loading && !error && sorted.length === 0 && (
+            <Empty>이 테이블의 주문 이력이 없습니다.</Empty>
+        )}
+        {!loading && !error && sorted.length > 0 && (
+            <List ref={listRef}>
+              {sorted.map((o, i) => (
+                  <CardWrap
+                      key={o?.customerOrder?.order_id ?? `${i}`}
+                      ref={(el) => (colRefs.current[i] = el)}
+                  >
+                    <OrderCard {...toCardProps(o)} />
+                  </CardWrap>
+              ))}
+            </List>
+        )}
+      </Modal>
   );
 }
 
@@ -144,30 +164,3 @@ const List = styled.div`
 `;
 
 const CardWrap = styled.div``;
-
-
-/**
- * 
- * {
-    "customerOrder": {
-        "order_id": 5,
-        "table_id": 1,
-        "visit_id": 1,
-        "status": "PENDING",
-        "order_code": "BE-20250812-000005",
-        "total_amount": 15000,
-        "created_at": "2025-08-12T06:38:46.370645Z",
-        "approved_at": null
-    },
-    "orderItems": [
-        {
-            "name": "치즈핫도그",
-            "quantity": 3
-        }
-    ],
-    "paymentInfo": {
-        "payer_name": "ㅇㄴㅇㄴㅁ",
-        "amount": 15000
-    }
-}
- */

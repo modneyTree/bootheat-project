@@ -4,8 +4,10 @@ package com.example.bootheat.repository;
 import com.example.bootheat.domain.OrderItem;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
@@ -60,4 +62,29 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
     // 여러 주문에 대한 라인아이템을 한 번에 로딩 (menuItem까지 로딩)
     @EntityGraph(attributePaths = {"menuItem"})
     List<OrderItem> findByOrder_OrderIdIn(Collection<Long> orderIds);
+
+    List<OrderItem> findByOrder_OrderIdAndIsFinishedFalse(Long orderId);
+    List<OrderItem> findByOrder_OrderIdAndIsFinishedTrue(Long orderId);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Transactional
+    @Query("""
+           update OrderItem oi
+              set oi.isFinished = :finished
+            where oi.order.orderId = :orderId
+              and oi.orderItemId = :itemId
+           """)
+    int updateFinishedOne(@Param("orderId") Long orderId,
+                          @Param("itemId") Long itemId,
+                          @Param("finished") boolean finished);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Transactional
+    @Query("""
+           update OrderItem oi
+              set oi.isFinished = :finished
+            where oi.order.orderId = :orderId
+           """)
+    int updateFinishedAllInOrder(@Param("orderId") Long orderId,
+                                 @Param("finished") boolean finished);
 }

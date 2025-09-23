@@ -1,34 +1,33 @@
-// src/services/orderApi.js
+// src/api/manager/orderApi.js
 import axios from "axios";
 import { BASE_URL, API_MANAGER_ORDERS } from "../api.js";
 
-// axios 인스턴스 (쿠키 포함)
+/** axios 인스턴스 (쿠키 포함) */
 const client = axios.create({
   baseURL: BASE_URL,
   withCredentials: true,
   headers: { "Content-Type": "application/json" },
 });
 
-// 공통 에러 핸들러
+/** 공통 에러 핸들러 */
 function handleApiError(err) {
   const status = err?.response?.status;
   const msg =
-    err?.response?.data?.message ||
-    err?.message ||
-    "Unknown error while calling order API";
-  // 필요한 곳에서 catch로 잡아 사용자 알림(toast 등) 처리
+      err?.response?.data?.message ||
+      err?.message ||
+      "Unknown error while calling order API";
   const wrapped = new Error(`[${status || "ERR"}] ${msg}`);
   wrapped.status = status;
   wrapped.cause = err;
   throw wrapped;
 }
 
-// 상태값 검증
+/** 상태값 검증 */
 const VALID_STATUSES = ["PENDING", "APPROVED", "REJECTED", "FINISHED"];
 function assertValidStatus(status) {
   if (!VALID_STATUSES.includes(status)) {
     throw new Error(
-      `Invalid status "${status}". Use one of: ${VALID_STATUSES.join(", ")}`
+        `Invalid status "${status}". Use one of: ${VALID_STATUSES.join(", ")}`
     );
   }
 }
@@ -40,24 +39,20 @@ export async function setOrderStatus(orderId, status) {
     const url = API_MANAGER_ORDERS.SET_STATUS(orderId, status);
     const body = { order_id: Number(orderId), status };
     const res = await client.post(url, body);
-    // 스펙상 200 OK만 필요. 필요 시 res.data 반환.
     return res.data ?? true;
   } catch (err) {
     handleApiError(err);
   }
 }
 
-/** 편의 함수들 (예시 엔드포인트도 지원) */
+/** 편의 함수들 */
 export async function approveOrder(orderId) {
   try {
-    // 통합 엔드포인트 사용 (권장)
     return await setOrderStatus(orderId, "APPROVED");
-    // 또는 개별: await client.post(API_MANAGER_ORDERS.APPROVE(orderId), { order_id: Number(orderId), status: "APPROVED" });
   } catch (err) {
     handleApiError(err);
   }
 }
-
 export async function rejectOrder(orderId) {
   try {
     return await setOrderStatus(orderId, "REJECTED");
@@ -65,7 +60,6 @@ export async function rejectOrder(orderId) {
     handleApiError(err);
   }
 }
-
 export async function pendingOrder(orderId) {
   try {
     return await setOrderStatus(orderId, "PENDING");
@@ -73,7 +67,6 @@ export async function pendingOrder(orderId) {
     handleApiError(err);
   }
 }
-
 export async function finishOrder(orderId) {
   try {
     return await setOrderStatus(orderId, "FINISHED");
@@ -110,7 +103,8 @@ export async function getLatestVisitOrderIds(tableId) {
   try {
     const url = API_MANAGER_ORDERS.GET_LATEST_VISIT_ORDER_IDS(tableId);
     const res = await client.get(url);
-    // 기대 응답: { orderIds: [...] }
+    // 백엔드 구현에 따라 배열 또는 { orderIds: [] } 둘 다 수용
+    if (Array.isArray(res.data)) return res.data;
     return res.data?.orderIds ?? [];
   } catch (err) {
     handleApiError(err);
@@ -122,13 +116,6 @@ export async function getOrderDetail(orderId) {
   try {
     const url = API_MANAGER_ORDERS.GET_ORDER_DETAIL(orderId);
     const res = await client.get(url);
-    /* 기대 응답:
-      {
-        customerOrder: {...},
-        orderItems: [{ name, quantity }, ...],
-        paymentInfo: { payer_name, amount }
-      }
-    */
     return res.data;
   } catch (err) {
     handleApiError(err);
@@ -147,19 +134,45 @@ export async function getTableOrders(boothId, tableId) {
   }
 }
 
-/** 추가) 테이블 생성 (보유 좌석/테이블 하나 추가) */
+/** 7) 테이블 생성 (좌석/테이블 추가) */
 export async function createTable(boothId) {
   try {
     const url = API_MANAGER_ORDERS.CREATE_TABLE(boothId);
     const res = await client.post(url); // body 없음
-    // 스펙: 201 Created. 필요 시 res.data 반환
     return res.data ?? true;
   } catch (err) {
     handleApiError(err);
   }
 }
 
-/** 묶어서 export (취향껏 사용) */
+/** 8) (신규) 특정 라인아이템 완료/취소
+ *  PATCH /api/manager/orders/{orderId}/items/{itemId}/finished?finished=true|false
+ */
+export async function updateOrderItemFinished(orderId, itemId, finished) {
+  try {
+    const url = API_MANAGER_ORDERS.UPDATE_ITEM_FINISHED(orderId, itemId, finished);
+    // 쿼리스트링 기반이라 body 없음. (서버가 body 받도록 했으면 {} 대신 { isFinished: finished } 사용)
+    const res = await client.patch(url, null, { headers: { Accept: "application/json" } });
+    return res.data ?? true;
+  } catch (err) {
+    handleApiError(err);
+  }
+}
+
+/** 9) (신규) 주문의 모든 라인아이템 일괄 완료/취소
+ *  PATCH /api/manager/orders/{orderId}/items/finished?finished=true|false
+ */
+export async function updateAllOrderItemsFinished(orderId, finished) {
+  try {
+    const url = API_MANAGER_ORDERS.UPDATE_ALL_ITEMS_FINISHED(orderId, finished);
+    const res = await client.patch(url, null, { headers: { Accept: "application/json" } });
+    return res.data ?? true;
+  } catch (err) {
+    handleApiError(err);
+  }
+}
+
+/** 묶어서 export (편의) */
 const orderApi = {
   setOrderStatus,
   approveOrder,
@@ -172,6 +185,8 @@ const orderApi = {
   getOrderDetail,
   getTableOrders,
   createTable,
+  updateOrderItemFinished,
+  updateAllOrderItemsFinished,
 };
 
 export default orderApi;

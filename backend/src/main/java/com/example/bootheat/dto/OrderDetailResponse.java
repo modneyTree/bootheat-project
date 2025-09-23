@@ -8,6 +8,7 @@ public record OrderDetailResponse(
         Integer totalAmount, Instant createdAt, Instant approvedAt,
         List<Line> items, Payment payment, Long visitId
 ) {
-    public record Line(Long menuItemId, String name, Integer unitPrice, Integer quantity) {}
+    public record Line(Long menuItemId, String name, Integer unitPrice, Integer quantity, Boolean isFinished) {}
+
     public record Payment(String payerName, Integer amount) {}
 }

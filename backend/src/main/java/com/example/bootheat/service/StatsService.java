@@ -219,7 +219,8 @@ public class StatsService {
                                     oi.getMenuItem().getName(),
                                     oi.getUnitPrice(),
                                     oi.getQuantity(),
-                                    (long) oi.getUnitPrice() * oi.getQuantity()
+                                    (long) oi.getUnitPrice() * oi.getQuantity(),
+                                    oi.getIsFinished()
                             ))
                             .toList();
 

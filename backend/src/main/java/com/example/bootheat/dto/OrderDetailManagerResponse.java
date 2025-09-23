@@ -20,10 +20,14 @@ public record OrderDetailManagerResponse(
             @JsonProperty("created_at") Instant createdAt,
             @JsonProperty("approved_at") Instant approvedAt
     ) {}
+
     public record OrderItemRow(
+            @JsonProperty("order_item_id") Long orderItemId,   // ⬅️ 추가
             @JsonProperty("name") String name,
-            @JsonProperty("quantity") Integer quantity
+            @JsonProperty("quantity") Integer quantity,
+            @JsonProperty("is_finished") Boolean isFinished    // ⬅️ snake_case 유지
     ) {}
+
     public record PaymentInfoData(
             @JsonProperty("payer_name") String payerName,
             @JsonProperty("amount") Integer amount

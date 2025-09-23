@@ -12,28 +12,6 @@ import org.springframework.web.bind.annotation.*;
 public class ManagerOrderController {
     private final OrderService orderService;
 
-    // 기존 개별 엔드포인트도 유지 가능
-//    @PostMapping("/orders/{orderId}/approve")
-//    public ResponseEntity<Void> approve(@PathVariable Long orderId) {
-//        orderService.changeStatus(orderId, "APPROVED");
-//        return ResponseEntity.noContent().build();
-//    }
-//    @PostMapping("/orders/{orderId}/reject")
-//    public ResponseEntity<Void> reject(@PathVariable Long orderId) {
-//        orderService.changeStatus(orderId, "REJECTED");
-//        return ResponseEntity.noContent().build();
-//    }
-//    @PostMapping("/orders/{orderId}/pending")
-//    public ResponseEntity<Void> pending(@PathVariable Long orderId) {
-//        orderService.changeStatus(orderId, "PENDING");
-//        return ResponseEntity.noContent().build();
-//    }
-//    @PostMapping("/orders/{orderId}/finish")
-//    public ResponseEntity<Void> finish(@PathVariable Long orderId) {
-//        orderService.changeStatus(orderId, "FINISHED");
-//        return ResponseEntity.noContent().build();
-//    }
-
     // web/ManagerOrderController.java
     @PostMapping("/orders/{orderId}/status/{status}")
     public ResponseEntity<Void> change(
@@ -53,6 +31,29 @@ public class ManagerOrderController {
         }
         orderService.changeStatus(orderId, status);
         return ResponseEntity.ok().build(); // 200
+    }
+
+    // ✅ (신규) 특정 라인아이템 완료/취소
+    // 예: PATCH /api/manager/orders/123/items/456/finished?finished=true
+    @PatchMapping("/orders/{orderId}/items/{orderItemId}/finished")
+    public ResponseEntity<Void> setItemFinished(
+            @PathVariable Long orderId,
+            @PathVariable Long orderItemId,
+            @RequestParam boolean finished
+    ) {
+        orderService.setOrderItemFinished(orderId, orderItemId, finished);
+        return ResponseEntity.ok().build();
+    }
+
+    // ✅ (신규) 주문의 모든 라인아이템 일괄 완료/취소
+    // 예: PATCH /api/manager/orders/123/items/finished?finished=true
+    @PatchMapping("/orders/{orderId}/items/finished")
+    public ResponseEntity<Integer> setAllItemsFinished(
+            @PathVariable Long orderId,
+            @RequestParam boolean finished
+    ) {
+        int updated = orderService.setAllOrderItemsFinished(orderId, finished);
+        return ResponseEntity.ok(updated); // 변경된 row 수 반환
     }
 
 }

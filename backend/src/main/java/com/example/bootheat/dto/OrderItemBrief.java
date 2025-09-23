@@ -6,5 +6,6 @@ public record OrderItemBrief(
         String name,
         Integer unitPrice,
         Integer quantity,
-        Long lineAmount
+        Long lineAmount,
+        Boolean isFinished   // 추가됨
 ) {}

@@ -121,6 +121,16 @@ export const API_MANAGER_ORDERS = {
   // 테이블 생성 (프런트에서 body 없음)
   // POST /api/manager/booths/{boothId}/tables
   CREATE_TABLE: (boothId) => `/manager/booths/${boothId}/tables`,
+
+  // ✅ 8) 특정 라인아이템 완료/취소
+  // PATCH /api/manager/orders/{orderId}/items/{itemId}/finished?finished=true|false
+  UPDATE_ITEM_FINISHED: (orderId, itemId, finished) =>
+      `/manager/orders/${orderId}/items/${itemId}/finished?finished=${finished}`,
+
+  // ✅ 9) 주문의 모든 라인아이템 일괄 완료/취소
+  // PATCH /api/manager/orders/{orderId}/items/finished?finished=true|false
+  UPDATE_ALL_ITEMS_FINISHED: (orderId, finished) =>
+      `/manager/orders/${orderId}/items/finished?finished=${finished}`,
 };
 
 // ---------------------------------------------------------------------
