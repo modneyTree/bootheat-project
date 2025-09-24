@@ -124,15 +124,15 @@ export default function OrderCard({
 
 /* ===== styles ===== */
 const Card = styled.article`
-    width: 320px;
-    min-height: 520px;
+    width: 260px;        /* ✅ 카드 폭 축소 */
+    min-height: 360px;   /* ✅ 최소 높이 축소 */
     background: #fff;
     border: 1px solid #eee;
-    border-radius: 20px;
-    padding: 20px 18px;
+    border-radius: 16px;
+    padding: 12px;
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 12px;
 `;
 const CardHead = styled.div`
     display: flex;
@@ -170,8 +170,10 @@ const EmptyText = styled.p`
 `;
 const ItemList = styled.div`
     display: grid;
-    gap: 14px;
-    padding-top: 8px;
+    gap: 10px;
+    padding-top: 6px;
+    max-height: 200px;   /* ✅ 스크롤 가능하도록 높이 제한 */
+    overflow-y: auto;    /* ✅ 아이템 많으면 스크롤 */
 `;
 const ItemRow = styled.div`
     display: grid;

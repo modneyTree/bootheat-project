@@ -101,11 +101,11 @@ VALUES
      'https://modney.shop/uploads/f6f0490b-8cea-42c0-beba-c6cdd5b3c400_sscc_menu2.png',
      'https://modney.shop/uploads/f6f0490b-8cea-42c0-beba-c6cdd5b3c400_sscc_menu2.png',
      CURRENT_TIMESTAMP),
-    (5, '어묵탕', 'FOOD', 12000, TRUE, NULL,
+    (5, '어묵탕', 'FOOD', 14000, TRUE, NULL,
      'https://modney.shop/uploads/f0348bea-c738-482d-a242-392ae32fd5d4_sscc_menu3.png',
      'https://modney.shop/uploads/f0348bea-c738-482d-a242-392ae32fd5d4_sscc_menu3.png',
      CURRENT_TIMESTAMP),
-    (5, '치즈 김치전', 'FOOD', 8000, TRUE, NULL,
+    (5, '치즈 김치전', 'FOOD', 10000, TRUE, NULL,
      'https://modney.shop/uploads/a89cbd3a-3142-4e97-a3e4-1b6eb22c1d30_sscc_menu4.png',
      'https://modney.shop/uploads/a89cbd3a-3142-4e97-a3e4-1b6eb22c1d30_sscc_menu4.png',
      CURRENT_TIMESTAMP);
@@ -117,7 +117,7 @@ VALUES
      'https://modney.shop/uploads/c6df302a-c4e6-414d-9cfe-c166cfa36808_sscc_side2.png',
      'https://modney.shop/uploads/c6df302a-c4e6-414d-9cfe-c166cfa36808_sscc_side2.png',
      CURRENT_TIMESTAMP),
-    (5, '치즈 계란말이', 'FOOD', 5000, TRUE, NULL,
+    (5, '치즈 계란말이', 'FOOD', 10000, TRUE, NULL,
      'https://modney.shop/uploads/d43187d7-4e56-405f-ad16-4c54946762d4_sscc_side1.png',
      'https://modney.shop/uploads/d43187d7-4e56-405f-ad16-4c54946762d4_sscc_side1.png',
      CURRENT_TIMESTAMP);
@@ -134,4 +134,4 @@ VALUES
     (4, '롯타운영자', '$2a$10$dummyhashdummyhashdummyhashdum', 'MANAGER',
      '우리은행', '444-555-666', '서태웅', CURRENT_TIMESTAMP),
     (5, 'SSCC운영자', '$2a$10$dummyhashdummyhashdummyhashdum', 'MANAGER',
-     '국민은행', '94290200558304', '김철수', CURRENT_TIMESTAMP);
+     '토스뱅크', '100220704241', '김지성', CURRENT_TIMESTAMP);

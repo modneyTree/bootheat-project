@@ -1,4 +1,4 @@
-// src/pages/manager/ManagerOrderPage.jsx
+// src/pages/manager/Manager/OrderPage.jsx
 import React, { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import styled from "styled-components";
 import { useParams } from "react-router-dom";
@@ -338,8 +338,8 @@ const CountText = styled.p`
 `;
 const Grid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 18px;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); /* ✅ 카드 축소 대응 */
+  gap: 12px; /* ✅ 카드 간 간격 줄임 */
 `;
 const LoaderWrap = styled.div`
   padding: 60px 0;

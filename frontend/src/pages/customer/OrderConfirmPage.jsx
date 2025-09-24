@@ -121,7 +121,9 @@ export default function OrderConfirmPage() {
 
   // 🔽 쿠폰 확인 함수
   const checkCoupon = () => {
-    if (couponCode.trim().toLowerCase() === "lota1234") {
+    const code = couponCode.trim().toLowerCase();
+
+    if (code === "lota1234" || code === "sscc1983") {
       setCouponApplied(true);
       setCouponError("");
       showSuccessToast("쿠폰이 적용되었습니다! (10% 할인)");

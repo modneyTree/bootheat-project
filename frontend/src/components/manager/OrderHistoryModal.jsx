@@ -157,8 +157,8 @@ const Empty = styled.div`
 const List = styled.div`
   display: grid;
   grid-auto-flow: column;
-  grid-auto-columns: 340px;
-  gap: 18px;
+  grid-auto-columns: 260px; /* ✅ 카드 폭 축소 */
+  gap: 12px;                /* ✅ 카드 간격 축소 */
   overflow-x: auto;
   padding: 8px 6px 6px 6px;
 `;
