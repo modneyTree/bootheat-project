@@ -69,12 +69,17 @@ function toLatestCardProps(table, latestOrder) {
   }
 
   const status = getStatus(latestOrder);
-  const timeText = formatTime(getCreatedAt(latestOrder));
+  const createdAt = getCreatedAt(latestOrder);
+
+  // ✅ 시간 + 순번 표시
+  const seq = latestOrder?.sequence ? ` ${latestOrder.sequence}` : "";
+  const timeText = `${formatTime(createdAt)}${seq}`;
+
   const amount = getAmount(latestOrder);
   const orderId = getOrderId(latestOrder);
   const payer = getPayerName(latestOrder) || "-";
 
-  // ✅ order_item_id → id로 매핑, is_finished 그대로 사용
+  // ✅ order_item_id → id로 매핑
   const items = getItemsRaw(latestOrder).map((it) => ({
     id: it.order_item_id ?? it.id,
     name: it.name,
@@ -122,7 +127,7 @@ export default function ManagerOrderPage() {
         loadingRef.current = true;
 
         try {
-          if (isFirst) setLoading(true); // ✅ 최초 로딩일 때만 로딩 화면 보여주기
+          if (isFirst) setLoading(true); // 최초 로딩일 때만 로딩 화면
 
           const tableList = await getTablesByBooth(boothNum);
           const safeTables = Array.isArray(tableList) ? tableList : [];
@@ -158,27 +163,65 @@ export default function ManagerOrderPage() {
               })
           );
 
+          // ✅ 모든 주문 모아 날짜별로 순번 붙이기
+          const allOrders = detailPairs.flatMap(({ details }) => details);
+
+          const ymdLocal = (iso) => {
+            if (!iso) return "invalid";
+            const d = new Date(iso);
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+                d.getDate()
+            ).padStart(2, "0")}`;
+          };
+
+          const groupedByDate = new Map();
+          for (const o of allOrders) {
+            const co = o?.customerOrder || {};
+            const key = ymdLocal(co.created_at);
+            if (!groupedByDate.has(key)) groupedByDate.set(key, []);
+            groupedByDate.get(key).push(o);
+          }
+
+          const seqByOrderId = new Map();
+          for (const [ymd, list] of groupedByDate.entries()) {
+            list
+                .sort(
+                    (a, b) =>
+                        new Date(a?.customerOrder?.created_at).getTime() -
+                        new Date(b?.customerOrder?.created_at).getTime()
+                )
+                .forEach((order, idx) => {
+                  const oid = order?.customerOrder?.order_id;
+                  if (oid != null) {
+                    seqByOrderId.set(oid, String(idx + 1).padStart(4, "0"));
+                  }
+                });
+          }
+
           const map = {};
           detailPairs.forEach(({ tableId, details }) => {
-            map[tableId] = details;
+            map[tableId] = details.map((o) => {
+              const co = o?.customerOrder || {};
+              const seq = seqByOrderId.get(co.order_id);
+              return seq ? { ...o, sequence: seq } : o;
+            });
           });
           setOrdersByTable(map);
         } finally {
-          if (isFirst) setLoading(false); // ✅ 최초 로딩 후에만 false
+          if (isFirst) setLoading(false);
           loadingRef.current = false;
         }
       },
       [boothNum]
   );
 
-  // ✅ 초기 로드 + 10초마다 자동 업데이트 (탭 비활성화 시 정지)
-  // ✅ 최초 로딩 시에만 로딩 화면 보여주기
+  // ✅ 초기 로드 + 10초마다 자동 업데이트
   useEffect(() => {
-    load(true); // 첫 실행 (로딩 O)
+    load(true);
 
     const id = setInterval(() => {
       if (document.visibilityState === "visible") {
-        load(false); // 주기적 갱신 (로딩 X → 화면 안 튐)
+        load(false);
       }
     }, 10000);
 
@@ -301,9 +344,7 @@ export default function ManagerOrderPage() {
                       onClear={() => handleClear(table.tableId, orderIds)}
                       onReceiptClick={() => handleReceiptClick(table.tableId)}
                       isHistory={false}
-                      onToggleItem={(item) =>
-                          handleToggleItem(cardProps.orderId, item)
-                      }
+                      onToggleItem={(item) => handleToggleItem(cardProps.orderId, item)}
                   />
               ))}
             </Grid>
@@ -343,8 +384,8 @@ const CountText = styled.p`
 `;
 const Grid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); /* ✅ 카드 축소 대응 */
-  gap: 12px; /* ✅ 카드 간 간격 줄임 */
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
 `;
 const LoaderWrap = styled.div`
   padding: 60px 0;
