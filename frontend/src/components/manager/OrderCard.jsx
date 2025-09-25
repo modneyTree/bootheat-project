@@ -114,7 +114,7 @@ export default function OrderCard({
                         )}
                         {isApproved && <GhostBtn onClick={onClear}>비우기</GhostBtn>}
                         {isRejected && <GhostBtn disabled>거절됨</GhostBtn>}
-                        {isFinished && <GhostBtn disabled>완료</GhostBtn>}
+                        {isFinished && <WhiteBtn disabled>완료</WhiteBtn>}
                     </Actions>
                 </>
             )}
@@ -251,4 +251,13 @@ const GhostBtn = styled.button`
     &:hover {
         filter: brightness(0.98);
     }
+`;
+const WhiteBtn = styled.button`
+  height: 52px;
+  border: 1px solid #ddd;
+  background: #fff;   /* ✅ 흰색 배경 */
+  color: #222;
+  font-weight: 900;
+  border-radius: 12px;
+  cursor: not-allowed; /* ✅ 완료니까 클릭 불가 */
 `;
