@@ -106,7 +106,7 @@ export default function ManagerOrderPage() {
   const { boothId } = useParams();
   const boothNum = Number(boothId);
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // ✅ 최초 로딩 전용
   const [tables, setTables] = useState([]);
   const [ordersByTable, setOrdersByTable] = useState({});
 
@@ -115,65 +115,70 @@ export default function ManagerOrderPage() {
 
   const loadingRef = useRef(false);
 
-  const load = useCallback(async () => {
-    if (!boothNum) return;
-    if (loadingRef.current) return; // 중복 요청 방지
-    loadingRef.current = true;
+  const load = useCallback(
+      async (isFirst = false) => {
+        if (!boothNum) return;
+        if (loadingRef.current) return; // 중복 요청 방지
+        loadingRef.current = true;
 
-    try {
-      setLoading(true);
-      const tableList = await getTablesByBooth(boothNum);
-      const safeTables = Array.isArray(tableList) ? tableList : [];
-      setTables(safeTables);
+        try {
+          if (isFirst) setLoading(true); // ✅ 최초 로딩일 때만 로딩 화면 보여주기
 
-      const idsByTable = await Promise.all(
-          safeTables.map(async (t) => {
-            try {
-              const ids = await getLatestVisitOrderIds(t.tableId);
-              return {
-                tableId: t.tableId,
-                ids: Array.isArray(ids) ? ids : ids?.orderIds ?? [],
-              };
-            } catch {
-              return { tableId: t.tableId, ids: [] };
-            }
-          })
-      );
+          const tableList = await getTablesByBooth(boothNum);
+          const safeTables = Array.isArray(tableList) ? tableList : [];
+          setTables(safeTables);
 
-      const detailPairs = await Promise.all(
-          idsByTable.map(async ({ tableId, ids }) => {
-            if (!ids.length) return { tableId, details: [] };
-            const details = await Promise.all(
-                ids.map(async (oid) => {
-                  try {
-                    return await getOrderDetail(oid);
-                  } catch {
-                    return null;
-                  }
-                })
-            );
-            return { tableId, details: details.filter(Boolean) };
-          })
-      );
+          const idsByTable = await Promise.all(
+              safeTables.map(async (t) => {
+                try {
+                  const ids = await getLatestVisitOrderIds(t.tableId);
+                  return {
+                    tableId: t.tableId,
+                    ids: Array.isArray(ids) ? ids : ids?.orderIds ?? [],
+                  };
+                } catch {
+                  return { tableId: t.tableId, ids: [] };
+                }
+              })
+          );
 
-      const map = {};
-      detailPairs.forEach(({ tableId, details }) => {
-        map[tableId] = details;
-      });
-      setOrdersByTable(map);
-    } finally {
-      setLoading(false);
-      loadingRef.current = false;
-    }
-  }, [boothNum]);
+          const detailPairs = await Promise.all(
+              idsByTable.map(async ({ tableId, ids }) => {
+                if (!ids.length) return { tableId, details: [] };
+                const details = await Promise.all(
+                    ids.map(async (oid) => {
+                      try {
+                        return await getOrderDetail(oid);
+                      } catch {
+                        return null;
+                      }
+                    })
+                );
+                return { tableId, details: details.filter(Boolean) };
+              })
+          );
+
+          const map = {};
+          detailPairs.forEach(({ tableId, details }) => {
+            map[tableId] = details;
+          });
+          setOrdersByTable(map);
+        } finally {
+          if (isFirst) setLoading(false); // ✅ 최초 로딩 후에만 false
+          loadingRef.current = false;
+        }
+      },
+      [boothNum]
+  );
 
   // ✅ 초기 로드 + 10초마다 자동 업데이트 (탭 비활성화 시 정지)
+  // ✅ 최초 로딩 시에만 로딩 화면 보여주기
   useEffect(() => {
-    load(); // 첫 실행
+    load(true); // 첫 실행 (로딩 O)
 
     const id = setInterval(() => {
       if (document.visibilityState === "visible") {
-        load();
+        load(false); // 주기적 갱신 (로딩 X → 화면 안 튐)
       }
     }, 10000);
 
