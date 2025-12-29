@@ -1,6 +1,6 @@
 # BoothEat (부스잇)
 ### QR 코드 기반 축제 결제 서비스 (Backend 중심)
-![BoothEat 프로젝트 개요](./docs/images/boothheat-overview.png)
+![BoothEat 프로젝트 개요](./docs/boothheat-overview.png)
 
 BoothEat은 대학 축제·동아리 행사에서 발생하는 **결제 대기 시간과 주문 오류**를 줄이기 위해  
 테이블별 QR 코드(URL)로 주문을 받고, 매니저가 입금 내역을 확인해 **승인/거절**하는 모바일 키오스크형 결제 서비스입니다.
